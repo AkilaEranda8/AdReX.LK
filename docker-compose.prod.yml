@@ -16,7 +16,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
-      RUN_DB_SEED: ${RUN_DB_SEED:-true}
+      RUN_DB_SEED: ${RUN_DB_SEED:-false}
     volumes:
       - invoice_data:/app/data
       - invoice_uploads:/app/uploads

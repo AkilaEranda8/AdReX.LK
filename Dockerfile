@@ -14,6 +14,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate
 RUN npx esbuild prisma/seed.ts --bundle --platform=node --format=cjs \
     --outfile=prisma/seed.bundle.cjs --external:@prisma/client
+RUN npx esbuild prisma/init-admin.ts --bundle --platform=node --format=cjs \
+    --outfile=prisma/init-admin.bundle.cjs --external:@prisma/client --external:bcryptjs
+RUN npx esbuild prisma/wipe-all.ts --bundle --platform=node --format=cjs \
+    --outfile=prisma/wipe-all.bundle.cjs --external:@prisma/client
+ENV DATABASE_URL=file:/tmp/empty.template.db
+RUN npx prisma db push --skip-generate && cp /tmp/empty.template.db prisma/empty.template.db
 ENV DATABASE_URL=file:/tmp/prod.template.db
 RUN npx prisma db push --skip-generate
 RUN DATABASE_URL=file:/tmp/prod.template.db node prisma/seed.bundle.cjs
