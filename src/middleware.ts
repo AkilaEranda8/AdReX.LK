@@ -23,7 +23,8 @@ export async function middleware(request: NextRequest) {
 
   if (
     process.env.NODE_ENV === "production" &&
-    request.headers.get("x-forwarded-proto") === "http"
+    request.headers.get("x-forwarded-proto") === "http" &&
+    (request.headers.get("host") || "").endsWith("invoice.hexalyte.com")
   ) {
     const host = request.headers.get("host") || request.nextUrl.host;
     return NextResponse.redirect(
