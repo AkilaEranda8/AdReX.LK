@@ -24,55 +24,68 @@ if [ ! -f .env ]; then
 fi
 
 echo "==> Building and starting invoice app (port 3002)..."
-docker-compose -f "${COMPOSE_FILE}" build --no-cache
+docker-compose -f "${COMPOSE_FILE}" build
 docker-compose -f "${COMPOSE_FILE}" up -d
 
-echo "==> Waiting for app health..."
-for i in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:3002" >/dev/null 2>&1; then
+echo "==> Waiting for app on port 3002..."
+for i in $(seq 1 45); do
+  if curl -fsS "http://127.0.0.1:3002/login" >/dev/null 2>&1; then
     echo "App is responding on port 3002"
     break
   fi
   sleep 2
-  if [ "$i" -eq 30 ]; then
+  if [ "$i" -eq 45 ]; then
     echo "WARNING: App did not respond on 3002 yet. Check: docker logs adrex-invoice-app"
   fi
 done
 
-echo "==> Installing nginx snippet..."
-cp "${APP_DIR}/deploy/nginx-invoice.conf" "${NGINX_SNIPPET}"
-
-if ! grep -q "invoice.hexalyte.com.conf" "${NGINX_CONF}"; then
-  sed -i '/^http {/a\    include /etc/nginx/conf.d/invoice.hexalyte.com.conf;' "${NGINX_CONF}"
-fi
-
-if ! grep -q "invoice.hexalyte.com:/etc/letsencrypt/live/invoice.hexalyte.com" "${IMS_DIR}/docker-compose.prod.yml"; then
-  python3 - <<'PY'
+ensure_nginx_mounts() {
+  local with_ssl="${1:-false}"
+  python3 - <<PY
 from pathlib import Path
 path = Path("/root/hexalyte-main-ims/docker-compose.prod.yml")
 text = path.read_text()
 needle = "      - ./nginx/options-ssl-nginx.conf:/etc/nginx/conf.d/options-ssl-nginx.conf:ro"
-insert = needle + "\n      - /etc/letsencrypt/live/invoice.hexalyte.com:/etc/letsencrypt/live/invoice.hexalyte.com:ro\n      - ./nginx/invoice.hexalyte.com.conf:/etc/nginx/conf.d/invoice.hexalyte.com.conf:ro"
-if insert not in text:
-    text = text.replace(needle, insert)
-    path.write_text(text)
+snippet = "      - ./nginx/invoice.hexalyte.com.conf:/etc/nginx/conf.d/invoice.hexalyte.com.conf:ro"
+ssl = "      - /etc/letsencrypt/live/invoice.hexalyte.com:/etc/letsencrypt/live/invoice.hexalyte.com:ro"
+if snippet not in text:
+    text = text.replace(needle, needle + "\n" + snippet)
+if ${with_ssl} and ssl not in text:
+    text = text.replace(snippet, snippet + "\n" + ssl)
+path.write_text(text)
 PY
-fi
+
+  if ! grep -q "invoice.hexalyte.com.conf" "${NGINX_CONF}"; then
+    sed -i '/^http {/a\    include /etc/nginx/conf.d/invoice.hexalyte.com.conf;' "${NGINX_CONF}"
+  fi
+}
+
+reload_nginx() {
+  cd "${IMS_DIR}"
+  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx
+  sleep 2
+  docker exec nginx-proxy-ims nginx -t
+  docker exec nginx-proxy-ims nginx -s reload
+}
 
 if [ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
+  echo "==> Phase 1: HTTP-only nginx for ACME + proxy..."
+  cp "${APP_DIR}/deploy/nginx-invoice-http.conf" "${NGINX_SNIPPET}"
+  ensure_nginx_mounts false
+  reload_nginx
+
   echo "==> Requesting SSL certificate for ${DOMAIN}..."
   certbot certonly --webroot \
     -w "${WEBROOT}" \
     -d "${DOMAIN}" \
     --non-interactive \
     --agree-tos \
-    --register-unsafely-without-email || true
+    --register-unsafely-without-email
 fi
 
-echo "==> Reloading IMS nginx (existing apps stay running)..."
-cd "${IMS_DIR}"
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx
-docker exec nginx-proxy-ims nginx -t
-docker exec nginx-proxy-ims nginx -s reload
+echo "==> Phase 2: HTTPS nginx config..."
+cp "${APP_DIR}/deploy/nginx-invoice.conf" "${NGINX_SNIPPET}"
+ensure_nginx_mounts true
+reload_nginx
 
 echo "==> Done. https://${DOMAIN}"
