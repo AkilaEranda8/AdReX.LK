@@ -41,6 +41,11 @@ done
 
 ensure_nginx_mounts() {
   local with_ssl="${1:-false}"
+  if [ "$with_ssl" = "true" ]; then
+    WITH_SSL=True
+  else
+    WITH_SSL=False
+  fi
   python3 - <<PY
 from pathlib import Path
 path = Path("/root/hexalyte-main-ims/docker-compose.prod.yml")
@@ -50,7 +55,7 @@ snippet = "      - ./nginx/invoice.hexalyte.com.conf:/etc/nginx/conf.d/invoice.h
 ssl = "      - /etc/letsencrypt/live/invoice.hexalyte.com:/etc/letsencrypt/live/invoice.hexalyte.com:ro"
 if snippet not in text:
     text = text.replace(needle, needle + "\n" + snippet)
-if ${with_ssl} and ssl not in text:
+if ${WITH_SSL} and ssl not in text:
     text = text.replace(snippet, snippet + "\n" + ssl)
 path.write_text(text)
 PY
