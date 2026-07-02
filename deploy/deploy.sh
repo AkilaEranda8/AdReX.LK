@@ -24,8 +24,8 @@ if [ ! -f .env ]; then
 fi
 
 echo "==> Building and starting invoice app (port 3002)..."
-docker compose -f "${COMPOSE_FILE}" build --no-cache
-docker compose -f "${COMPOSE_FILE}" up -d
+docker-compose -f "${COMPOSE_FILE}" build --no-cache
+docker-compose -f "${COMPOSE_FILE}" up -d
 
 echo "==> Waiting for app health..."
 for i in $(seq 1 30); do
@@ -71,7 +71,7 @@ fi
 
 echo "==> Reloading IMS nginx (existing apps stay running)..."
 cd "${IMS_DIR}"
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx
 docker exec nginx-proxy-ims nginx -t
 docker exec nginx-proxy-ims nginx -s reload
 
