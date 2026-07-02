@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum InvoiceWorkflowStatus {
+  DRAFT
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  NONE
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
+enum QuotationStatus {
+  DRAFT
+  PENDING
+  CONVERTED
+}
+
+model User {
+  id                 String               @id @default(cuid())
+  email              String               @unique
+  username           String               @unique
+  password           String
+  name               String
+  role               Role                 @default(STAFF)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Client {
+  id                String             @id @default(cuid())
+  clientId          String             @unique
+  name              String
+  contactNumber     String
+  email             String
+  status            ClientStatus       @default(ACTIVE)
+  creditBalance     Float              @default(0)
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  invoices          Invoice[]
+  quotations        Quotation[]
+  payments          Payment[]
+  recurringInvoices RecurringInvoice[]
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  invoiceNumber    String        @unique
+  clientId         String
+  client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoiceDate      DateTime
+  dueDate          DateTime?
+  reference        String?
+  notes            String?
+  taxRate          Float         @default(0)
+  subTotal         Float         @default(0)
+  discount         Float         @default(0)
+  advancePayment   Float         @default(0)
+  grandTotal       Float         @default(0)
+  remainingBalance Float                 @default(0)
+  invoiceStatus    InvoiceWorkflowStatus @default(PENDING)
+  paymentStatus    PaymentStatus         @default(NONE)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  items            InvoiceItem[]
+  payments         Payment[]
+  attachments      Attachment[]
+}
+
+model InvoiceItem {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  itemName  String
+  price     Float
+  quantity  Float
+  total     Float
+}
+
+model Quotation {
+  id              String          @id @default(cuid())
+  quotationNumber String          @unique
+  clientId        String
+  client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  quotationDate   DateTime
+  validUntil      DateTime?
+  reference       String?
+  notes           String?
+  status          QuotationStatus @default(PENDING)
+  grandTotal      Float           @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  items           QuotationItem[]
+  attachments     Attachment[]
+}
+
+model QuotationItem {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  itemName    String
+  price       Float
+  quantity    Float
+  total       Float
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  amount        Float
+  paymentMethod String?
+  paymentDate   DateTime @default(now())
+  note          String?
+  createdAt     DateTime @default(now())
+}
+
+model RecurringInvoice {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  frequency  String
+  nextDate   DateTime
+  dayOfMonth Int?
+  itemsJson  String
+  discount   Float    @default(0)
+  notes      String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Attachment {
+  id          String     @id @default(cuid())
+  fileName    String
+  filePath    String
+  mimeType    String
+  size        Int
+  invoiceId   String?
+  invoice     Invoice?   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  quotationId String?
+  quotation   Quotation? @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  userName   String
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+}
+
+model CompanySettings {
+  id        String   @id @default("default")
+  data      String
+  updatedAt DateTime @updatedAt
+}
+
+model SequenceCounter {
+  id    String @id
+  value Int    @default(0)
+}
