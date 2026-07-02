@@ -52,7 +52,7 @@ path = Path("/root/hexalyte-main-ims/docker-compose.prod.yml")
 text = path.read_text()
 needle = "      - ./nginx/options-ssl-nginx.conf:/etc/nginx/conf.d/options-ssl-nginx.conf:ro"
 snippet = "      - ./nginx/invoice.hexalyte.com.conf:/etc/nginx/conf.d/invoice.hexalyte.com.conf:ro"
-ssl = "      - /etc/letsencrypt/live/invoice.hexalyte.com:/etc/letsencrypt/live/invoice.hexalyte.com:ro"
+ssl = "      - ./nginx/ssl-invoice:/etc/letsencrypt/live/invoice.hexalyte.com:ro"
 if snippet not in text:
     text = text.replace(needle, needle + "\n" + snippet)
 if ${WITH_SSL} and ssl not in text:
@@ -86,6 +86,10 @@ if [ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
     --non-interactive \
     --agree-tos \
     --register-unsafely-without-email
+
+  mkdir -p "${IMS_DIR}/nginx/ssl-invoice"
+  cp -L "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" "${IMS_DIR}/nginx/ssl-invoice/fullchain.pem"
+  cp -L "/etc/letsencrypt/live/${DOMAIN}/privkey.pem" "${IMS_DIR}/nginx/ssl-invoice/privkey.pem"
 fi
 
 echo "==> Phase 2: HTTPS nginx config..."
