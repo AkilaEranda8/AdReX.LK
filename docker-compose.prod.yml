@@ -5,8 +5,6 @@ services:
       dockerfile: Dockerfile
     container_name: adrex-invoice-app
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:3002:3000"
     environment:
       NODE_ENV: production
       DATABASE_URL: file:/app/data/prod.db
@@ -22,7 +20,15 @@ services:
     volumes:
       - invoice_data:/app/data
       - invoice_uploads:/app/uploads
+    networks:
+      - default
+      - ims-network
 
 volumes:
   invoice_data:
   invoice_uploads:
+
+networks:
+  ims-network:
+    external: true
+    name: hexalyte-main-ims_mynetwork-ims

@@ -23,19 +23,19 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-echo "==> Building and starting invoice app (port 3002)..."
+echo "==> Building and starting invoice app..."
 docker-compose -f "${COMPOSE_FILE}" build
 docker-compose -f "${COMPOSE_FILE}" up -d
 
-echo "==> Waiting for app on port 3002..."
+echo "==> Waiting for app..."
 for i in $(seq 1 45); do
-  if curl -fsS "http://127.0.0.1:3002/login" >/dev/null 2>&1; then
-    echo "App is responding on port 3002"
+  if docker exec nginx-proxy-ims wget -qO- --timeout=3 http://adrex-invoice-app:3000/login >/dev/null 2>&1; then
+    echo "App is responding via Docker network"
     break
   fi
   sleep 2
   if [ "$i" -eq 45 ]; then
-    echo "WARNING: App did not respond on 3002 yet. Check: docker logs adrex-invoice-app"
+    echo "WARNING: App not reachable yet. Check: docker logs adrex-invoice-app"
   fi
 done
 
