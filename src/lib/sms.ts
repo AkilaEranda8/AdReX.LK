@@ -54,6 +54,23 @@ export function normalizePhoneNumber(phone: string) {
   return digits;
 }
 
+function sanitizeGatewayError(body: string, status: number) {
+  const trimmed = body.trim();
+
+  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+    if (/<title>\s*Not Found\s*<\/title>/i.test(trimmed)) {
+      return `SMS API URL not found (HTTP ${status}). Check the gateway URL in Settings → SMS Gateway.`;
+    }
+    return `SMS gateway returned an HTML error page (HTTP ${status}). Verify the API URL and credentials.`;
+  }
+
+  if (trimmed.length > 240) {
+    return `${trimmed.slice(0, 240)}...`;
+  }
+
+  return trimmed || `SMS gateway failed (HTTP ${status})`;
+}
+
 export async function getSmsConfig(): Promise<SmsGatewaySettings | null> {
   const settings = await getCompanySettings();
   const sms = settings.sms;
@@ -101,7 +118,7 @@ async function sendViaTextIt(config: SmsGatewaySettings, to: string, message: st
   const body = await res.text();
 
   if (!res.ok) {
-    throw new Error(body || `TextIt request failed (${res.status})`);
+    throw new Error(sanitizeGatewayError(body, res.status));
   }
 
   const lower = body.toLowerCase();
@@ -155,7 +172,7 @@ async function sendViaGeneric(config: SmsGatewaySettings, to: string, message: s
   const body = await res.text();
 
   if (!res.ok) {
-    throw new Error(body || `SMS gateway failed (${res.status})`);
+    throw new Error(sanitizeGatewayError(body, res.status));
   }
 
   return body;
