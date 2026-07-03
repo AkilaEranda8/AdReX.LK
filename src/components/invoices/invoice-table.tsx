@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Eye,
   Download,
@@ -111,7 +112,13 @@ export function InvoiceTable({
   onStatusChange,
   updatingStatusId,
 }: InvoiceTableProps) {
+  const pathname = usePathname();
   const [menuId, setMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMenuId(null);
+  }, [pathname]);
+
   const total = data.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;

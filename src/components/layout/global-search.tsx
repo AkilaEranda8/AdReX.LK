@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import api from "@/lib/api";
@@ -13,6 +14,7 @@ interface SearchResults {
 }
 
 export function GlobalSearch() {
+  const pathname = usePathname();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [open, setOpen] = useState(false);
@@ -31,6 +33,12 @@ export function GlobalSearch() {
     }, 300);
     return () => clearTimeout(t);
   }, [query]);
+
+  useEffect(() => {
+    setOpen(false);
+    setQuery("");
+    setResults(null);
+  }, [pathname]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

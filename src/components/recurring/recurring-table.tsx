@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Play,
   Trash2,
@@ -96,7 +97,13 @@ export function RecurringTable({
   generatingId,
   togglingId,
 }: RecurringTableProps) {
+  const pathname = usePathname();
   const [menuId, setMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMenuId(null);
+  }, [pathname]);
+
   const total = data.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const start = (page - 1) * pageSize;

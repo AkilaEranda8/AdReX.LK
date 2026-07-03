@@ -72,6 +72,23 @@ export function AppHeader({ user, title }: AppHeaderProps) {
     }).catch(() => {});
   }, [pathname]);
 
+  useEffect(() => {
+    setNotifOpen(false);
+    setProfileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!notifOpen && !profileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNotifOpen(false);
+        setProfileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [notifOpen, profileOpen]);
+
   const handleLogout = async () => {
     try {
       await api.post("/auth/logout");
@@ -130,7 +147,11 @@ export function AppHeader({ user, title }: AppHeaderProps) {
             </button>
             {notifOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  aria-hidden
+                  onClick={() => setNotifOpen(false)}
+                />
                 <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-border bg-card shadow-xl">
                   <div className="border-b border-border px-4 py-3">
                     <p className="font-semibold text-foreground">Notifications</p>
@@ -198,7 +219,11 @@ export function AppHeader({ user, title }: AppHeaderProps) {
             </button>
             {profileOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  aria-hidden
+                  onClick={() => setProfileOpen(false)}
+                />
                 <div className="absolute right-0 top-12 z-50 w-52 rounded-xl border border-border bg-card py-1 shadow-xl">
                   <div className="border-b border-border px-4 py-3 lg:hidden">
                     <p className="font-semibold text-foreground">{user.name}</p>
