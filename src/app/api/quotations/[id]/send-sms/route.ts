@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { getCompanySettings } from "@/lib/settings";
-import { sendTemplatedSms } from "@/lib/sms";
-import { formatCurrency } from "@/lib/utils";
+import { sendQuotationSms } from "@/lib/sms";
 
 export async function POST(
   request: NextRequest,
@@ -25,14 +23,7 @@ export async function POST(
       return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
     }
 
-    const settings = await getCompanySettings();
-
-    const result = await sendTemplatedSms(quotation.client.contactNumber, "quotationSent", {
-      clientName: quotation.client.name,
-      quotationNumber: quotation.quotationNumber,
-      amount: formatCurrency(quotation.grandTotal),
-      company: settings.brand || settings.name,
-    });
+    const result = await sendQuotationSms(quotation);
 
     await logAudit({
       userId: auth.session.userId,

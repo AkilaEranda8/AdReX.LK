@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/api-auth";
 import { getCompanySettings, saveCompanySettings } from "@/lib/settings";
 import { logAudit } from "@/lib/audit";
 import { isEmailConfigured, SMTP_PASS_MASK } from "@/lib/email";
-import { isSmsConfigured, SMS_API_KEY_MASK } from "@/lib/sms";
+import { isSmsConfigured, SMS_API_KEY_MASK, getSmsAutoNotifications } from "@/lib/sms";
 
 function maskSmtpSettings(settings: Awaited<ReturnType<typeof getCompanySettings>>) {
   const smtp = settings.smtp;
@@ -32,6 +32,13 @@ function maskSmtpSettings(settings: Awaited<ReturnType<typeof getCompanySettings
 
 function maskSmsSettings(settings: Awaited<ReturnType<typeof getCompanySettings>>) {
   const sms = settings.sms;
+  const autoNotifications = {
+    invoiceSent:
+      sms?.autoNotifications?.invoiceSent ?? (sms?.sendOnInvoiceCreate !== false),
+    quotationSent: sms?.autoNotifications?.quotationSent !== false,
+    paymentReceived: sms?.autoNotifications?.paymentReceived !== false,
+  };
+
   return {
     enabled: sms?.enabled !== false,
     provider: sms?.provider || "textit",
@@ -39,7 +46,7 @@ function maskSmsSettings(settings: Awaited<ReturnType<typeof getCompanySettings>
     apiKey: sms?.apiKey || "",
     apiSecret: sms?.apiSecret ? SMS_API_KEY_MASK : "",
     senderId: sms?.senderId || "",
-    sendOnInvoiceCreate: sms?.sendOnInvoiceCreate !== false,
+    autoNotifications,
   };
 }
 
@@ -55,6 +62,7 @@ export async function GET(request: NextRequest) {
     sms: maskSmsSettings(settings),
     smsTemplates: settings.smsTemplates,
     smsConfigured: await isSmsConfigured(),
+    smsAutoNotifications: await getSmsAutoNotifications(),
   });
 }
 
@@ -95,7 +103,11 @@ export async function PUT(request: NextRequest) {
             ? incoming.apiSecret
             : existing.sms?.apiSecret || "",
         senderId: incoming.senderId?.trim() || "",
-        sendOnInvoiceCreate: incoming.sendOnInvoiceCreate !== false,
+        autoNotifications: {
+          invoiceSent: incoming.autoNotifications?.invoiceSent !== false,
+          quotationSent: incoming.autoNotifications?.quotationSent !== false,
+          paymentReceived: incoming.autoNotifications?.paymentReceived !== false,
+        },
       };
     }
 

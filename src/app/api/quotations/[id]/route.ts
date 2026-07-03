@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { calculateItemTotal } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { sendQuotationCreatedSms } from "@/lib/sms";
 
 export async function GET(
   request: NextRequest,
@@ -35,6 +36,13 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     const isDraft = !!body.isDraft;
+
+    const existing = await prisma.quotation.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
+    }
+
+    const wasDraft = existing.status === "DRAFT";
 
     const items = body.items.map((item: { itemName: string; price: number; quantity: number }) => ({
       itemName: item.itemName,
@@ -71,7 +79,22 @@ export async function PUT(
       details: quotation.quotationNumber,
     });
 
-    return NextResponse.json(quotation);
+    let sms: Awaited<ReturnType<typeof sendQuotationCreatedSms>> | undefined;
+    if (wasDraft && !isDraft) {
+      sms = await sendQuotationCreatedSms(quotation);
+      if (sms.sent || (!sms.skipped && !sms.sent)) {
+        await logAudit({
+          userId: auth.session.userId,
+          userName: auth.session.name,
+          action: sms.sent ? "SMS_SENT" : "SMS_FAILED",
+          entityType: "Quotation",
+          entityId: id,
+          details: sms.message,
+        });
+      }
+    }
+
+    return NextResponse.json({ ...quotation, sms });
   } catch {
     return NextResponse.json({ error: "Failed to update quotation" }, { status: 500 });
   }

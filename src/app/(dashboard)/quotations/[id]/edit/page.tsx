@@ -88,8 +88,16 @@ export default function EditQuotationPage() {
       if (!valid) return;
     }
     try {
-      await api.put(`/quotations/${id}`, buildQuotationApiPayload(form.getValues(), isDraft));
-      toast.success(isDraft ? "Draft saved" : "Quotation updated successfully");
+      const res = await api.put(`/quotations/${id}`, buildQuotationApiPayload(form.getValues(), isDraft));
+      const sms = res.data?.sms as { sent?: boolean; skipped?: boolean; message?: string } | undefined;
+      if (!isDraft && sms?.sent) {
+        toast.success("Quotation updated — SMS sent to client");
+      } else if (!isDraft && sms && !sms.skipped) {
+        toast.success("Quotation updated successfully");
+        toast.error(`SMS failed: ${sms.message}`);
+      } else {
+        toast.success(isDraft ? "Draft saved" : "Quotation updated successfully");
+      }
       router.push(`/quotations/${id}`);
     } catch {
       toast.error("Failed to update quotation");

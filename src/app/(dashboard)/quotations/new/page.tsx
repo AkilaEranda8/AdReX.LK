@@ -67,7 +67,15 @@ export default function NewQuotationPage() {
       if (pendingFiles.length > 0 && res.data?.id) {
         await uploadPendingAttachments(pendingFiles, { quotationId: res.data.id });
       }
-      toast.success(isDraft ? "Draft saved" : "Quotation created successfully");
+      const sms = res.data?.sms as { sent?: boolean; skipped?: boolean; message?: string } | undefined;
+      if (!isDraft && sms?.sent) {
+        toast.success("Quotation created — SMS sent to client");
+      } else if (!isDraft && sms && !sms.skipped) {
+        toast.success("Quotation created successfully");
+        toast.error(`SMS failed: ${sms.message}`);
+      } else {
+        toast.success(isDraft ? "Draft saved" : "Quotation created successfully");
+      }
       router.push("/quotations");
     } catch {
       toast.error("Failed to save quotation");

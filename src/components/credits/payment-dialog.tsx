@@ -70,14 +70,22 @@ export function PaymentDialog({ open, onOpenChange, client, onSuccess }: Props) 
   const onSubmit = async (data: FormData) => {
     if (!client) return;
     try {
-      await api.post("/credits", {
+      const res = await api.post("/credits", {
         clientId: client.id,
         invoiceId: data.invoiceId || undefined,
         amount: data.amount,
         note: data.note,
         paymentMethod: "cash",
       });
-      toast.success("Payment recorded successfully");
+      const sms = res.data?.sms as { sent?: boolean; skipped?: boolean; message?: string } | undefined;
+      if (sms?.sent) {
+        toast.success("Payment recorded — SMS sent to client");
+      } else if (sms && !sms.skipped) {
+        toast.success("Payment recorded successfully");
+        toast.error(`SMS failed: ${sms.message}`);
+      } else {
+        toast.success("Payment recorded successfully");
+      }
       onOpenChange(false);
       onSuccess();
     } catch {

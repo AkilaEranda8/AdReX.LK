@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { syncInvoiceStatuses } from "@/lib/numbering";
+import { logAudit } from "@/lib/audit";
+import { sendPaymentReceivedSms } from "@/lib/sms";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -110,7 +112,45 @@ export async function POST(request: NextRequest) {
       return payment;
     });
 
-    return NextResponse.json(result, { status: 201 });
+    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    let invoiceNumber = "your account";
+    if (invoiceId) {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: invoiceId },
+        select: { invoiceNumber: true },
+      });
+      if (invoice?.invoiceNumber) invoiceNumber = invoice.invoiceNumber;
+    }
+
+    let sms: Awaited<ReturnType<typeof sendPaymentReceivedSms>> | undefined;
+    if (client) {
+      sms = await sendPaymentReceivedSms({
+        client,
+        amount,
+        invoiceNumber,
+      });
+      if (sms.sent || (!sms.skipped && !sms.sent)) {
+        await logAudit({
+          userId: auth.session.userId,
+          userName: auth.session.name,
+          action: sms.sent ? "SMS_SENT" : "SMS_FAILED",
+          entityType: "Payment",
+          entityId: result.id,
+          details: sms.message,
+        });
+      }
+    }
+
+    await logAudit({
+      userId: auth.session.userId,
+      userName: auth.session.name,
+      action: "CREATE",
+      entityType: "Payment",
+      entityId: result.id,
+      details: `Rs. ${amount}`,
+    });
+
+    return NextResponse.json({ ...result, sms }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to record payment" }, { status: 500 });
   }

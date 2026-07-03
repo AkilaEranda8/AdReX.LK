@@ -1,4 +1,4 @@
-import { getCompanySettings } from "./settings";
+import { getCompanySettings, type SmsAutoNotifications } from "./settings";
 import { companyInfo } from "./company";
 import { formatCurrency, formatDate } from "./utils";
 
@@ -11,8 +11,37 @@ export interface SmsGatewaySettings {
   apiKey: string;
   apiSecret: string;
   senderId: string;
+  /** @deprecated use autoNotifications.invoiceSent */
   sendOnInvoiceCreate?: boolean;
+  autoNotifications?: Partial<SmsAutoNotifications>;
 }
+
+export type SmsAutoTrigger = keyof SmsAutoNotifications;
+
+export const defaultSmsAutoNotifications: SmsAutoNotifications = {
+  invoiceSent: true,
+  quotationSent: true,
+  paymentReceived: true,
+};
+
+export const SMS_AUTO_TRIGGER_META: Record<
+  SmsAutoTrigger,
+  { label: string; description: string }
+> = {
+  invoiceSent: {
+    label: "New Invoice",
+    description:
+      "Invoice create, draft publish, quotation convert, or recurring invoice generate",
+  },
+  quotationSent: {
+    label: "New Quotation",
+    description: "Quotation create or draft publish",
+  },
+  paymentReceived: {
+    label: "Payment Received",
+    description: "Payment recorded from Credits / client payment",
+  },
+};
 
 export interface SmsTemplates {
   invoiceSent: string;
@@ -269,6 +298,34 @@ export async function sendSms(
 
 export type SmsResult = { sent: boolean; message: string; skipped?: boolean };
 
+export async function getSmsAutoNotifications(): Promise<SmsAutoNotifications> {
+  const settings = await getCompanySettings();
+  const sms = settings.sms;
+  const saved = sms?.autoNotifications;
+
+  if (saved) {
+    return {
+      invoiceSent: saved.invoiceSent !== false,
+      quotationSent: saved.quotationSent !== false,
+      paymentReceived: saved.paymentReceived !== false,
+    };
+  }
+
+  return {
+    invoiceSent: sms?.sendOnInvoiceCreate !== false,
+    quotationSent: true,
+    paymentReceived: true,
+  };
+}
+
+export async function isAutoSmsEnabled(trigger: SmsAutoTrigger): Promise<boolean> {
+  const settings = await getCompanySettings();
+  if (settings.sms?.enabled === false) return false;
+  const notifications = await getSmsAutoNotifications();
+  if (!notifications[trigger]) return false;
+  return !!(await getSmsConfig());
+}
+
 export type InvoiceSmsPayload = {
   client: { name: string; contactNumber: string };
   invoiceNumber: string;
@@ -277,11 +334,70 @@ export type InvoiceSmsPayload = {
   dueDate: Date | null;
 };
 
+export type QuotationSmsPayload = {
+  client: { name: string; contactNumber: string };
+  quotationNumber: string;
+  grandTotal: number;
+};
+
+export type PaymentSmsPayload = {
+  client: { name: string; contactNumber: string };
+  amount: number;
+  invoiceNumber: string;
+};
+
 export async function shouldAutoSendInvoiceSms(): Promise<boolean> {
+  return isAutoSmsEnabled("invoiceSent");
+}
+
+export async function sendQuotationSms(quotation: QuotationSmsPayload): Promise<SmsResult> {
+  const phone = quotation.client.contactNumber?.trim();
+  if (!phone) {
+    return { sent: false, message: "Client has no contact number", skipped: true };
+  }
+
   const settings = await getCompanySettings();
-  if (settings.sms?.enabled === false) return false;
-  if (settings.sms?.sendOnInvoiceCreate === false) return false;
-  return !!(await getSmsConfig());
+  return sendTemplatedSms(phone, "quotationSent", {
+    clientName: quotation.client.name,
+    quotationNumber: quotation.quotationNumber,
+    amount: formatCurrency(quotation.grandTotal),
+    company: settings.brand || settings.name,
+  });
+}
+
+export async function sendQuotationCreatedSms(quotation: QuotationSmsPayload): Promise<SmsResult> {
+  if (!(await isAutoSmsEnabled("quotationSent"))) {
+    return {
+      sent: false,
+      message: "Auto quotation SMS is disabled or gateway not configured",
+      skipped: true,
+    };
+  }
+
+  return sendQuotationSms(quotation);
+}
+
+export async function sendPaymentReceivedSms(payment: PaymentSmsPayload): Promise<SmsResult> {
+  if (!(await isAutoSmsEnabled("paymentReceived"))) {
+    return {
+      sent: false,
+      message: "Auto payment SMS is disabled or gateway not configured",
+      skipped: true,
+    };
+  }
+
+  const phone = payment.client.contactNumber?.trim();
+  if (!phone) {
+    return { sent: false, message: "Client has no contact number", skipped: true };
+  }
+
+  const settings = await getCompanySettings();
+  return sendTemplatedSms(phone, "paymentReceived", {
+    clientName: payment.client.name,
+    invoiceNumber: payment.invoiceNumber,
+    amount: formatCurrency(payment.amount),
+    company: settings.brand || settings.name,
+  });
 }
 
 export async function sendInvoiceSms(

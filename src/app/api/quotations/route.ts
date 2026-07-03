@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { generateQuotationNumber, calculateItemTotal } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { sendQuotationCreatedSms } from "@/lib/sms";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -60,7 +61,22 @@ export async function POST(request: NextRequest) {
       details: quotation.quotationNumber,
     });
 
-    return NextResponse.json(quotation, { status: 201 });
+    let sms: Awaited<ReturnType<typeof sendQuotationCreatedSms>> | undefined;
+    if (!isDraft) {
+      sms = await sendQuotationCreatedSms(quotation);
+      if (sms.sent || (!sms.skipped && !sms.sent)) {
+        await logAudit({
+          userId: auth.session.userId,
+          userName: auth.session.name,
+          action: sms.sent ? "SMS_SENT" : "SMS_FAILED",
+          entityType: "Quotation",
+          entityId: quotation.id,
+          details: sms.message,
+        });
+      }
+    }
+
+    return NextResponse.json({ ...quotation, sms }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to create quotation" }, { status: 500 });
   }

@@ -3,6 +3,12 @@ import { companyInfo } from "./company";
 
 export type SmsProvider = "textit" | "notifylk" | "smslenz" | "generic";
 
+export interface SmsAutoNotifications {
+  invoiceSent: boolean;
+  quotationSent: boolean;
+  paymentReceived: boolean;
+}
+
 export interface SmsGatewaySettings {
   enabled: boolean;
   provider: SmsProvider;
@@ -10,7 +16,9 @@ export interface SmsGatewaySettings {
   apiKey: string;
   apiSecret: string;
   senderId: string;
+  /** @deprecated use autoNotifications.invoiceSent */
   sendOnInvoiceCreate?: boolean;
+  autoNotifications?: Partial<SmsAutoNotifications>;
 }
 
 export interface SmsTemplates {
@@ -59,7 +67,11 @@ const defaults: SettingsData = {
     apiKey: "",
     apiSecret: "",
     senderId: "",
-    sendOnInvoiceCreate: true,
+    autoNotifications: {
+      invoiceSent: true,
+      quotationSent: true,
+      paymentReceived: true,
+    },
   },
   smsTemplates: {
     invoiceSent:

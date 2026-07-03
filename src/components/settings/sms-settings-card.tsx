@@ -15,9 +15,11 @@ import {
 import {
   SMS_TEMPLATE_LABELS,
   SMS_TEMPLATE_PLACEHOLDERS,
+  SMS_AUTO_TRIGGER_META,
+  type SmsAutoTrigger,
   type SmsTemplates,
 } from "@/lib/sms";
-import type { SmsProvider } from "@/lib/settings";
+import type { SmsProvider, SmsAutoNotifications } from "@/lib/settings";
 import { CheckCircle2, AlertCircle, MessageSquare, Send } from "lucide-react";
 
 export type SmsForm = {
@@ -27,7 +29,7 @@ export type SmsForm = {
   apiKey: string;
   apiSecret: string;
   senderId: string;
-  sendOnInvoiceCreate: boolean;
+  autoNotifications: SmsAutoNotifications;
 };
 
 interface SmsSettingsCardProps {
@@ -97,15 +99,48 @@ export function SmsSettingsCard({
             Enable SMS gateway
           </label>
 
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="rounded border-slate-300"
-              checked={sms.sendOnInvoiceCreate}
-              onChange={(e) => onSmsChange({ ...sms, sendOnInvoiceCreate: e.target.checked })}
-            />
-            Automatically send SMS when an invoice is created
-          </label>
+          <div className="space-y-3 rounded-xl border border-slate-200/80 bg-muted/30 p-4 dark:border-slate-800">
+            <div>
+              <p className="text-sm font-medium">Automatic SMS notifications</p>
+              <p className="text-xs text-muted-foreground">
+                Choose which events automatically send SMS to clients. Manual sends (e.g. Payment
+                Reminder from invoice page) are always available when the gateway is connected.
+              </p>
+            </div>
+            {(Object.keys(SMS_AUTO_TRIGGER_META) as SmsAutoTrigger[]).map((key) => (
+              <label key={key} className="flex cursor-pointer items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded border-slate-300"
+                  checked={sms.autoNotifications[key]}
+                  onChange={(e) =>
+                    onSmsChange({
+                      ...sms,
+                      autoNotifications: {
+                        ...sms.autoNotifications,
+                        [key]: e.target.checked,
+                      },
+                    })
+                  }
+                />
+                <span>
+                  <span className="font-medium">{SMS_AUTO_TRIGGER_META[key].label}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {SMS_AUTO_TRIGGER_META[key].description}
+                  </span>
+                </span>
+              </label>
+            ))}
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <input type="checkbox" className="mt-0.5 rounded border-slate-300" checked disabled />
+              <span>
+                <span className="font-medium text-foreground">Payment Reminder</span>
+                <span className="block text-xs">
+                  Manual only — use &quot;SMS Payment Reminder&quot; on the invoice page
+                </span>
+              </span>
+            </div>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">

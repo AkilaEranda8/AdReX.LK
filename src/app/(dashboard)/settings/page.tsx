@@ -11,7 +11,7 @@ import { SettingsStatCards } from "@/components/settings/settings-stat-cards";
 import { SmsSettingsCard, type SmsForm } from "@/components/settings/sms-settings-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import api from "@/lib/api";
-import { defaultSmsTemplates, type SmsTemplates } from "@/lib/sms";
+import { defaultSmsTemplates, defaultSmsAutoNotifications, type SmsTemplates } from "@/lib/sms";
 import type { SmsProvider } from "@/lib/settings";
 import toast from "react-hot-toast";
 import {
@@ -82,7 +82,7 @@ export default function SettingsPage() {
     apiKey: "",
     apiSecret: "",
     senderId: "",
-    sendOnInvoiceCreate: true,
+    autoNotifications: { ...defaultSmsAutoNotifications },
   });
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplates>(defaultSmsTemplates);
 
@@ -117,7 +117,13 @@ export default function SettingsPage() {
           apiKey: d.sms.apiKey || "",
           apiSecret: d.sms.apiSecret || "",
           senderId: d.sms.senderId || "",
-          sendOnInvoiceCreate: d.sms.sendOnInvoiceCreate !== false,
+          autoNotifications: {
+            invoiceSent:
+              d.sms.autoNotifications?.invoiceSent ??
+              (d.sms.sendOnInvoiceCreate !== false),
+            quotationSent: d.sms.autoNotifications?.quotationSent !== false,
+            paymentReceived: d.sms.autoNotifications?.paymentReceived !== false,
+          },
         });
       }
       if (d.smsTemplates) {
