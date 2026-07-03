@@ -79,7 +79,7 @@ const defaults: SettingsData = {
     invoiceReminder:
       "Reminder: Invoice {{invoiceNumber}} balance {{balance}} due {{dueDate}}. - {{company}}",
     paymentReceived:
-      "Thank you {{clientName}}! Payment {{amount}} received for invoice {{invoiceNumber}}. - {{company}}",
+      "Thank you {{clientName}}! Payment {{amount}} received for {{invoiceNumber}}. Remaining balance: {{balance}}. - {{company}}",
     quotationSent:
       "Dear {{clientName}}, quotation {{quotationNumber}} for {{amount}} from {{company}}. Contact us to proceed.",
   },

@@ -66,7 +66,7 @@ export const defaultSmsTemplates: SmsTemplates = {
   invoiceReminder:
     "Reminder: Invoice {{invoiceNumber}} balance {{balance}} due {{dueDate}}. - {{company}}",
   paymentReceived:
-    "Thank you {{clientName}}! Payment {{amount}} received for invoice {{invoiceNumber}}. - {{company}}",
+    "Thank you {{clientName}}! Payment {{amount}} received for {{invoiceNumber}}. Remaining balance: {{balance}}. - {{company}}",
   quotationSent:
     "Dear {{clientName}}, quotation {{quotationNumber}} for {{amount}} from {{company}}. Contact us to proceed.",
 };
@@ -344,6 +344,7 @@ export type PaymentSmsPayload = {
   client: { name: string; contactNumber: string };
   amount: number;
   invoiceNumber: string;
+  balance: number;
 };
 
 export async function shouldAutoSendInvoiceSms(): Promise<boolean> {
@@ -396,6 +397,7 @@ export async function sendPaymentReceivedSms(payment: PaymentSmsPayload): Promis
     clientName: payment.client.name,
     invoiceNumber: payment.invoiceNumber,
     amount: formatCurrency(payment.amount),
+    balance: formatCurrency(payment.balance),
     company: settings.brand || settings.name,
   });
 }

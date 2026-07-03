@@ -112,14 +112,21 @@ export async function POST(request: NextRequest) {
       return payment;
     });
 
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: { name: true, contactNumber: true, creditBalance: true },
+    });
+
     let invoiceNumber = "your account";
+    let balance = client?.creditBalance ?? 0;
+
     if (invoiceId) {
       const invoice = await prisma.invoice.findUnique({
         where: { id: invoiceId },
-        select: { invoiceNumber: true },
+        select: { invoiceNumber: true, remainingBalance: true },
       });
-      if (invoice?.invoiceNumber) invoiceNumber = invoice.invoiceNumber;
+      if (invoice?.invoiceNumber) invoiceNumber = `invoice ${invoice.invoiceNumber}`;
+      if (invoice) balance = invoice.remainingBalance;
     }
 
     let sms: Awaited<ReturnType<typeof sendPaymentReceivedSms>> | undefined;
@@ -128,6 +135,7 @@ export async function POST(request: NextRequest) {
         client,
         amount,
         invoiceNumber,
+        balance,
       });
       if (sms.sent || (!sms.skipped && !sms.sent)) {
         await logAudit({
