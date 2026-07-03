@@ -8,7 +8,7 @@ import {
   syncInvoiceStatuses,
 } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
-import { sendInvoiceCreatedSms } from "@/lib/sms";
+import { sendInvoiceCreatedSms, sendInvoiceAdvancePaymentSms } from "@/lib/sms";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
     });
 
     let sms: Awaited<ReturnType<typeof sendInvoiceCreatedSms>> | undefined;
+    let paymentSms: Awaited<ReturnType<typeof sendInvoiceAdvancePaymentSms>> | undefined;
     if (!isDraft) {
       sms = await sendInvoiceCreatedSms(invoice);
       if (sms.sent || (!sms.skipped && !sms.sent)) {
@@ -118,9 +119,23 @@ export async function POST(request: NextRequest) {
           details: sms.message,
         });
       }
+
+      if (invoice.advancePayment > 0) {
+        paymentSms = await sendInvoiceAdvancePaymentSms(invoice);
+        if (paymentSms && (paymentSms.sent || (!paymentSms.skipped && !paymentSms.sent))) {
+          await logAudit({
+            userId: auth.session.userId,
+            userName: auth.session.name,
+            action: paymentSms.sent ? "SMS_SENT" : "SMS_FAILED",
+            entityType: "Invoice",
+            entityId: invoice.id,
+            details: `Advance payment: ${paymentSms.message}`,
+          });
+        }
+      }
     }
 
-    return NextResponse.json({ ...invoice, sms }, { status: 201 });
+    return NextResponse.json({ ...invoice, sms, paymentSms }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 });
   }

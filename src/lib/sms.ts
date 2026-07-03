@@ -39,7 +39,8 @@ export const SMS_AUTO_TRIGGER_META: Record<
   },
   paymentReceived: {
     label: "Payment Received",
-    description: "Payment recorded from Credits / client payment",
+    description:
+      "Payment recorded from Credits, or advance payment added on an invoice",
   },
 };
 
@@ -415,6 +416,22 @@ export async function sendPaymentReceivedSms(payment: PaymentSmsPayload): Promis
   }
 
   return sendSms(phone, text);
+}
+
+export async function sendInvoiceAdvancePaymentSms(invoice: {
+  client: { name: string; contactNumber: string };
+  invoiceNumber: string;
+  advancePayment: number;
+  remainingBalance: number;
+}): Promise<SmsResult | undefined> {
+  if (invoice.advancePayment <= 0) return undefined;
+
+  return sendPaymentReceivedSms({
+    client: invoice.client,
+    amount: invoice.advancePayment,
+    invoiceNumber: `invoice ${invoice.invoiceNumber}`,
+    balance: invoice.remainingBalance,
+  });
 }
 
 export async function sendInvoiceSms(

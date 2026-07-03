@@ -85,11 +85,14 @@ export default function NewInvoicePage() {
         await uploadPendingAttachments(pendingFiles, { invoiceId: res.data.id });
       }
       const sms = res.data?.sms as { sent?: boolean; skipped?: boolean; message?: string } | undefined;
-      if (!isDraft && sms?.sent) {
-        toast.success("Invoice created — SMS sent to client");
-      } else if (!isDraft && sms && !sms.skipped) {
+      const paymentSms = res.data?.paymentSms as { sent?: boolean; skipped?: boolean; message?: string } | undefined;
+      if (!isDraft && (sms?.sent || paymentSms?.sent)) {
+        const parts = [sms?.sent && "invoice", paymentSms?.sent && "advance payment"].filter(Boolean);
+        toast.success(`Invoice created — ${parts.join(" & ")} SMS sent`);
+      } else if (!isDraft && ((sms && !sms.skipped && !sms.sent) || (paymentSms && !paymentSms.skipped && !paymentSms.sent))) {
         toast.success("Invoice created successfully");
-        toast.error(`SMS failed: ${sms.message}`);
+        if (sms && !sms.skipped && !sms.sent) toast.error(`Invoice SMS: ${sms.message}`);
+        if (paymentSms && !paymentSms.skipped && !paymentSms.sent) toast.error(`Payment SMS: ${paymentSms.message}`);
       } else {
         toast.success(isDraft ? "Draft saved" : "Invoice created successfully");
       }

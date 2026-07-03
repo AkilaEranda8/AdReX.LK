@@ -7,7 +7,7 @@ import {
   syncInvoiceStatuses,
 } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
-import { sendInvoiceCreatedSms } from "@/lib/sms";
+import { sendInvoiceCreatedSms, sendPaymentReceivedSms } from "@/lib/sms";
 
 export async function GET(
   request: NextRequest,
@@ -54,6 +54,11 @@ export async function PUT(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    const wasDraft = existing.invoiceStatus === "DRAFT";
+    const previousAdvance = wasDraft ? 0 : existing.advancePayment;
+    const newAdvance = isDraft ? 0 : body.advancePayment || 0;
+    const advanceDelta = Math.round((newAdvance - previousAdvance) * 100) / 100;
+
     const items = body.items.map((item: { itemName: string; price: number; quantity: number }) => ({
       itemName: item.itemName,
       price: item.price,
@@ -81,8 +86,6 @@ export async function PUT(
       isDraft,
       existing.invoiceStatus
     );
-
-    const wasDraft = existing.invoiceStatus === "DRAFT";
 
     const invoice = await prisma.$transaction(async (tx) => {
       const creditDiff = isDraft ? 0 : newRemaining - (wasDraft ? 0 : existing.remainingBalance);
@@ -130,6 +133,8 @@ export async function PUT(
     });
 
     let sms: Awaited<ReturnType<typeof sendInvoiceCreatedSms>> | undefined;
+    let paymentSms: Awaited<ReturnType<typeof sendPaymentReceivedSms>> | undefined;
+
     if (wasDraft && !isDraft) {
       sms = await sendInvoiceCreatedSms(invoice);
       if (sms.sent || (!sms.skipped && !sms.sent)) {
@@ -144,7 +149,26 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json({ ...invoice, sms });
+    if (!isDraft && advanceDelta > 0) {
+      paymentSms = await sendPaymentReceivedSms({
+        client: invoice.client,
+        amount: advanceDelta,
+        invoiceNumber: `invoice ${invoice.invoiceNumber}`,
+        balance: invoice.remainingBalance,
+      });
+      if (paymentSms.sent || (!paymentSms.skipped && !paymentSms.sent)) {
+        await logAudit({
+          userId: auth.session.userId,
+          userName: auth.session.name,
+          action: paymentSms.sent ? "SMS_SENT" : "SMS_FAILED",
+          entityType: "Invoice",
+          entityId: id,
+          details: `Advance payment: ${paymentSms.message}`,
+        });
+      }
+    }
+
+    return NextResponse.json({ ...invoice, sms, paymentSms });
   } catch {
     return NextResponse.json({ error: "Failed to update invoice" }, { status: 500 });
   }
