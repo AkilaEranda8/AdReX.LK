@@ -6,6 +6,7 @@ import {
   calculateInvoiceTotals,
   syncInvoiceStatuses,
 } from "@/lib/numbering";
+import { sendInvoiceCreatedSms } from "@/lib/sms";
 
 export async function POST(
   request: NextRequest,
@@ -69,7 +70,9 @@ export async function POST(
       data: { status: "CONVERTED" },
     });
 
-    return NextResponse.json(invoice, { status: 201 });
+    const sms = await sendInvoiceCreatedSms(invoice);
+
+    return NextResponse.json({ ...invoice, sms }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to convert quotation" }, { status: 500 });
   }

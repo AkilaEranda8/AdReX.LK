@@ -10,6 +10,7 @@ export interface SmsGatewaySettings {
   apiKey: string;
   apiSecret: string;
   senderId: string;
+  sendOnInvoiceCreate?: boolean;
 }
 
 export interface SmsTemplates {
@@ -58,6 +59,7 @@ const defaults: SettingsData = {
     apiKey: "",
     apiSecret: "",
     senderId: "",
+    sendOnInvoiceCreate: true,
   },
   smsTemplates: {
     invoiceSent:

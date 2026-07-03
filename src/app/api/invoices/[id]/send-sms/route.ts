@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { getCompanySettings } from "@/lib/settings";
-import { sendTemplatedSms } from "@/lib/sms";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { sendInvoiceSms } from "@/lib/sms";
 
 export async function POST(
   request: NextRequest,
@@ -27,18 +25,10 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    const settings = await getCompanySettings();
     const templateKey =
       template === "invoiceReminder" ? "invoiceReminder" : "invoiceSent";
 
-    const result = await sendTemplatedSms(invoice.client.contactNumber, templateKey, {
-      clientName: invoice.client.name,
-      invoiceNumber: invoice.invoiceNumber,
-      amount: formatCurrency(invoice.grandTotal),
-      balance: formatCurrency(invoice.remainingBalance),
-      dueDate: invoice.dueDate ? formatDate(invoice.dueDate) : "—",
-      company: settings.brand || settings.name,
-    });
+    const result = await sendInvoiceSms(invoice, templateKey);
 
     await logAudit({
       userId: auth.session.userId,

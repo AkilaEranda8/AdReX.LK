@@ -8,6 +8,7 @@ import {
   syncInvoiceStatuses,
 } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { sendInvoiceCreatedSms } from "@/lib/sms";
 
 function addFrequency(date: Date, frequency: string) {
   const d = new Date(date);
@@ -90,7 +91,9 @@ export async function POST(
       details: invoice.invoiceNumber,
     });
 
-    return NextResponse.json(invoice, { status: 201 });
+    const sms = await sendInvoiceCreatedSms(invoice);
+
+    return NextResponse.json({ ...invoice, sms }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to generate invoice" }, { status: 500 });
   }

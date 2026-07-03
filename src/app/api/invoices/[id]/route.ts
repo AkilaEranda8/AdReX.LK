@@ -7,6 +7,7 @@ import {
   syncInvoiceStatuses,
 } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
+import { sendInvoiceCreatedSms } from "@/lib/sms";
 
 export async function GET(
   request: NextRequest,
@@ -81,8 +82,9 @@ export async function PUT(
       existing.invoiceStatus
     );
 
+    const wasDraft = existing.invoiceStatus === "DRAFT";
+
     const invoice = await prisma.$transaction(async (tx) => {
-      const wasDraft = existing.invoiceStatus === "DRAFT";
       const creditDiff = isDraft ? 0 : newRemaining - (wasDraft ? 0 : existing.remainingBalance);
 
       await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
@@ -127,7 +129,22 @@ export async function PUT(
       details: invoice.invoiceNumber,
     });
 
-    return NextResponse.json(invoice);
+    let sms: Awaited<ReturnType<typeof sendInvoiceCreatedSms>> | undefined;
+    if (wasDraft && !isDraft) {
+      sms = await sendInvoiceCreatedSms(invoice);
+      if (sms.sent || (!sms.skipped && !sms.sent)) {
+        await logAudit({
+          userId: auth.session.userId,
+          userName: auth.session.name,
+          action: sms.sent ? "SMS_SENT" : "SMS_FAILED",
+          entityType: "Invoice",
+          entityId: id,
+          details: sms.message,
+        });
+      }
+    }
+
+    return NextResponse.json({ ...invoice, sms });
   } catch {
     return NextResponse.json({ error: "Failed to update invoice" }, { status: 500 });
   }

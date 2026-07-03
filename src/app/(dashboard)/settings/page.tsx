@@ -82,6 +82,7 @@ export default function SettingsPage() {
     apiKey: "",
     apiSecret: "",
     senderId: "",
+    sendOnInvoiceCreate: true,
   });
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplates>(defaultSmsTemplates);
 
@@ -116,6 +117,7 @@ export default function SettingsPage() {
           apiKey: d.sms.apiKey || "",
           apiSecret: d.sms.apiSecret || "",
           senderId: d.sms.senderId || "",
+          sendOnInvoiceCreate: d.sms.sendOnInvoiceCreate !== false,
         });
       }
       if (d.smsTemplates) {

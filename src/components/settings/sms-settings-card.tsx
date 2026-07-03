@@ -27,6 +27,7 @@ export type SmsForm = {
   apiKey: string;
   apiSecret: string;
   senderId: string;
+  sendOnInvoiceCreate: boolean;
 };
 
 interface SmsSettingsCardProps {
@@ -94,6 +95,16 @@ export function SmsSettingsCard({
               onChange={(e) => onSmsChange({ ...sms, enabled: e.target.checked })}
             />
             Enable SMS gateway
+          </label>
+
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300"
+              checked={sms.sendOnInvoiceCreate}
+              onChange={(e) => onSmsChange({ ...sms, sendOnInvoiceCreate: e.target.checked })}
+            />
+            Automatically send SMS when an invoice is created
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">

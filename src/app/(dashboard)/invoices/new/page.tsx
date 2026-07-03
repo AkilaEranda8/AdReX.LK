@@ -84,7 +84,15 @@ export default function NewInvoicePage() {
       if (pendingFiles.length > 0 && res.data?.id) {
         await uploadPendingAttachments(pendingFiles, { invoiceId: res.data.id });
       }
-      toast.success(isDraft ? "Draft saved" : "Invoice created successfully");
+      const sms = res.data?.sms as { sent?: boolean; skipped?: boolean; message?: string } | undefined;
+      if (!isDraft && sms?.sent) {
+        toast.success("Invoice created — SMS sent to client");
+      } else if (!isDraft && sms && !sms.skipped) {
+        toast.success("Invoice created successfully");
+        toast.error(`SMS failed: ${sms.message}`);
+      } else {
+        toast.success(isDraft ? "Draft saved" : "Invoice created successfully");
+      }
       router.push("/invoices");
     } catch {
       toast.error("Failed to save invoice");

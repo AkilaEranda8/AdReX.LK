@@ -1,5 +1,6 @@
 import { getCompanySettings } from "./settings";
 import { companyInfo } from "./company";
+import { formatCurrency, formatDate } from "./utils";
 
 export type SmsProvider = "textit" | "notifylk" | "smslenz" | "generic";
 
@@ -10,6 +11,7 @@ export interface SmsGatewaySettings {
   apiKey: string;
   apiSecret: string;
   senderId: string;
+  sendOnInvoiceCreate?: boolean;
 }
 
 export interface SmsTemplates {
@@ -263,6 +265,53 @@ export async function sendSms(
     const msg = err instanceof Error ? err.message : "Failed to send SMS";
     return { sent: false, message: msg };
   }
+}
+
+export type InvoiceSmsPayload = {
+  client: { name: string; contactNumber: string };
+  invoiceNumber: string;
+  grandTotal: number;
+  remainingBalance: number;
+  dueDate: Date | null;
+};
+
+export async function shouldAutoSendInvoiceSms(): Promise<boolean> {
+  const settings = await getCompanySettings();
+  if (settings.sms?.enabled === false) return false;
+  if (settings.sms?.sendOnInvoiceCreate === false) return false;
+  return !!(await getSmsConfig());
+}
+
+export async function sendInvoiceSms(
+  invoice: InvoiceSmsPayload,
+  templateKey: "invoiceSent" | "invoiceReminder" = "invoiceSent"
+) {
+  const phone = invoice.client.contactNumber?.trim();
+  if (!phone) {
+    return { sent: false, message: "Client has no contact number", skipped: true as const };
+  }
+
+  const settings = await getCompanySettings();
+  return sendTemplatedSms(phone, templateKey, {
+    clientName: invoice.client.name,
+    invoiceNumber: invoice.invoiceNumber,
+    amount: formatCurrency(invoice.grandTotal),
+    balance: formatCurrency(invoice.remainingBalance),
+    dueDate: invoice.dueDate ? formatDate(invoice.dueDate) : "—",
+    company: settings.brand || settings.name,
+  });
+}
+
+export async function sendInvoiceCreatedSms(invoice: InvoiceSmsPayload) {
+  if (!(await shouldAutoSendInvoiceSms())) {
+    return {
+      sent: false,
+      message: "Auto invoice SMS is disabled or gateway not configured",
+      skipped: true as const,
+    };
+  }
+
+  return sendInvoiceSms(invoice, "invoiceSent");
 }
 
 export async function sendTemplatedSms(

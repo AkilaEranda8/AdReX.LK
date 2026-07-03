@@ -39,6 +39,7 @@ function maskSmsSettings(settings: Awaited<ReturnType<typeof getCompanySettings>
     apiKey: sms?.apiKey || "",
     apiSecret: sms?.apiSecret ? SMS_API_KEY_MASK : "",
     senderId: sms?.senderId || "",
+    sendOnInvoiceCreate: sms?.sendOnInvoiceCreate !== false,
   };
 }
 
@@ -94,6 +95,7 @@ export async function PUT(request: NextRequest) {
             ? incoming.apiSecret
             : existing.sms?.apiSecret || "",
         senderId: incoming.senderId?.trim() || "",
+        sendOnInvoiceCreate: incoming.sendOnInvoiceCreate !== false,
       };
     }
 

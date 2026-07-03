@@ -102,8 +102,16 @@ export default function EditInvoicePage() {
       if (!valid) return;
     }
     try {
-      await api.put(`/invoices/${id}`, buildInvoiceApiPayload(form.getValues(), isDraft));
-      toast.success(isDraft ? "Draft saved" : "Invoice updated successfully");
+      const res = await api.put(`/invoices/${id}`, buildInvoiceApiPayload(form.getValues(), isDraft));
+      const sms = res.data?.sms as { sent?: boolean; skipped?: boolean; message?: string } | undefined;
+      if (!isDraft && sms?.sent) {
+        toast.success("Invoice updated — SMS sent to client");
+      } else if (!isDraft && sms && !sms.skipped) {
+        toast.success("Invoice updated successfully");
+        toast.error(`SMS failed: ${sms.message}`);
+      } else {
+        toast.success(isDraft ? "Draft saved" : "Invoice updated successfully");
+      }
       router.push(`/invoices/${id}`);
     } catch {
       toast.error("Failed to update invoice");
