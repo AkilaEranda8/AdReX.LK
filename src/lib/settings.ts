@@ -85,13 +85,20 @@ const defaults: SettingsData = {
   },
 };
 
+let paymentTemplateMigrated = false;
+
 export async function getCompanySettings(): Promise<SettingsData> {
   const row = await prisma.companySettings.findUnique({ where: { id: "default" } });
   if (!row) return defaults;
   try {
     const data = { ...defaults, ...JSON.parse(row.data) } as SettingsData;
     const paymentTemplate = data.smsTemplates?.paymentReceived;
-    if (paymentTemplate && !paymentTemplate.includes("{{balance}}")) {
+    if (
+      !paymentTemplateMigrated &&
+      paymentTemplate &&
+      !paymentTemplate.includes("{{balance}}")
+    ) {
+      paymentTemplateMigrated = true;
       data.smsTemplates = {
         ...defaults.smsTemplates!,
         ...data.smsTemplates,

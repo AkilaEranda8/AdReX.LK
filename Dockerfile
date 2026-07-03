@@ -50,7 +50,7 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-ENV DATABASE_URL=file:/app/data/prod.db
+ENV DATABASE_URL=file:/app/data/prod.db?busy_timeout=10000&journal_mode=WAL
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

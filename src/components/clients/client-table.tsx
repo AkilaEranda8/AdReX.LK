@@ -126,7 +126,7 @@ export function ClientTable({
                     <span className="font-medium text-indigo-600">{row.clientId}</span>
                   </td>
                   <td className="px-4 py-4">
-                    <Link href={`/clients/${row.id}`} className="font-medium text-foreground hover:text-indigo-600">
+                    <Link href={`/clients/${row.id}`} prefetch={false} className="font-medium text-foreground hover:text-indigo-600">
                       {row.name}
                     </Link>
                   </td>
@@ -163,7 +163,7 @@ export function ClientTable({
                         className="h-8 w-8 rounded-lg"
                         asChild
                       >
-                        <Link href={`/clients/${row.id}`}>
+                        <Link href={`/clients/${row.id}`} prefetch={false}>
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>

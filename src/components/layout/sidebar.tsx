@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -71,6 +72,11 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { mobileOpen, setMobileOpen, collapsed, setCollapsed } = useSidebar();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   const handleLogout = async () => {
     try {
@@ -162,7 +168,17 @@ export function Sidebar({ user }: SidebarProps) {
                     <li key={item.href}>
                       <Link
                         href={item.href}
-                        onClick={() => setMobileOpen(false)}
+                        prefetch={false}
+                        onClick={(e) => {
+                          setMobileOpen(false);
+                          if (pendingHref) {
+                            e.preventDefault();
+                            return;
+                          }
+                          if (pathname !== item.href && !pathname.startsWith(`${item.href}/`)) {
+                            setPendingHref(item.href);
+                          }
+                        }}
                         title={collapsed ? item.label : undefined}
                         className={cn(
                           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",

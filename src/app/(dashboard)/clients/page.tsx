@@ -116,7 +116,7 @@ export default function ClientsPage() {
             Export
           </Button>
           <Button asChild className="gap-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
-            <Link href="/clients/new">
+            <Link href="/clients/new" prefetch={false}>
               <Plus className="h-4 w-4" />
               Add Client
             </Link>

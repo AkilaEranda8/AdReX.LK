@@ -165,6 +165,7 @@ export function AppHeader({ user, title }: AppHeaderProps) {
                         <Link
                           key={inv.id}
                           href={`/invoices/${inv.id}`}
+                          prefetch={false}
                           onClick={() => setNotifOpen(false)}
                           className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-accent"
                         >
@@ -183,6 +184,7 @@ export function AppHeader({ user, title }: AppHeaderProps) {
                     <div className="border-t p-2">
                       <Link
                         href="/reports"
+                        prefetch={false}
                         onClick={() => setNotifOpen(false)}
                         className="block rounded-lg px-3 py-2 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-50"
                       >
@@ -231,6 +233,7 @@ export function AppHeader({ user, title }: AppHeaderProps) {
                   </div>
                   <Link
                     href="/settings"
+                    prefetch={false}
                     onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-accent"
                   >

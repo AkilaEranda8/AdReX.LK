@@ -79,6 +79,7 @@ export function GlobalSearch() {
                 <Link
                   key={c.id}
                   href={`/clients/${c.id}/edit`}
+                  prefetch={false}
                   className="block rounded-lg px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
                 >
                   {c.name} <span className="text-muted-foreground">({c.clientId})</span>
@@ -93,6 +94,7 @@ export function GlobalSearch() {
                 <Link
                   key={i.id}
                   href={`/invoices/${i.id}`}
+                  prefetch={false}
                   className="block rounded-lg px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
                 >
                   {i.invoiceNumber} · {i.client.name}
@@ -107,6 +109,7 @@ export function GlobalSearch() {
                 <Link
                   key={q.id}
                   href={`/quotations/${q.id}`}
+                  prefetch={false}
                   className="block rounded-lg px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
                 >
                   {q.quotationNumber} · {q.client.name}

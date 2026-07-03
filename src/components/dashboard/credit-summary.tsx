@@ -32,7 +32,7 @@ export function CreditSummaryCard({ totalCreditSales, totalReceived, outstanding
             <span className="font-semibold text-red-500">{formatCurrency(outstandingBalance)}</span>
           </div>
         </div>
-        <Link href="/credits" className="block">
+        <Link href="/credits" prefetch={false} className="block">
           <Button className="w-full rounded-lg bg-blue-600 hover:bg-blue-700">
             View All Credit Clients
           </Button>
