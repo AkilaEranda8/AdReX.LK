@@ -1,7 +1,7 @@
 import { getCompanySettings } from "./settings";
 import { companyInfo } from "./company";
 
-export type SmsProvider = "textit" | "notifylk" | "generic";
+export type SmsProvider = "textit" | "notifylk" | "smslenz" | "generic";
 
 export interface SmsGatewaySettings {
   enabled: boolean;
@@ -86,6 +86,7 @@ export async function getSmsConfig(): Promise<SmsGatewaySettings | null> {
 
   if (provider === "textit" && !apiSecret) return null;
   if (provider === "notifylk" && (!apiSecret || !senderId)) return null;
+  if (provider === "smslenz" && (!apiSecret || !senderId)) return null;
   if (provider === "generic" && !apiUrl) return null;
 
   return {
@@ -161,6 +162,50 @@ async function sendViaNotifyLk(config: SmsGatewaySettings, to: string, message: 
   return data;
 }
 
+function formatSmsLenzContact(phone: string) {
+  const digits = normalizePhoneNumber(phone);
+  return `+${digits}`;
+}
+
+async function sendViaSmsLenz(config: SmsGatewaySettings, to: string, message: string) {
+  const res = await fetch("https://smslenz.lk/api/send-sms", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      user_id: config.apiKey,
+      api_key: config.apiSecret,
+      sender_id: config.senderId,
+      contact: formatSmsLenzContact(to),
+      message,
+    }),
+    cache: "no-store",
+  });
+
+  const body = await res.text();
+  let data: { success?: boolean; message?: string; data?: { status?: string; message?: string } } = {};
+
+  try {
+    data = JSON.parse(body) as typeof data;
+  } catch {
+    if (!res.ok) {
+      throw new Error(sanitizeGatewayError(body, res.status));
+    }
+  }
+
+  if (!res.ok || data.success === false) {
+    throw new Error(
+      data.message || data.data?.message || sanitizeGatewayError(body, res.status)
+    );
+  }
+
+  const status = data.data?.status;
+  if (status && status !== "success") {
+    throw new Error(data.message || data.data?.message || "SMSlenz returned an error");
+  }
+
+  return data;
+}
+
 async function sendViaGeneric(config: SmsGatewaySettings, to: string, message: string) {
   const url = config.apiUrl
     .replace(/\{to\}/g, encodeURIComponent(to))
@@ -207,6 +252,8 @@ export async function sendSms(
       await sendViaTextIt(config, phone, text);
     } else if (config.provider === "notifylk") {
       await sendViaNotifyLk(config, phone, text);
+    } else if (config.provider === "smslenz") {
+      await sendViaSmsLenz(config, phone, text);
     } else {
       await sendViaGeneric(config, phone, text);
     }

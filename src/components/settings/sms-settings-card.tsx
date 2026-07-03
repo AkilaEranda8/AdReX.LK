@@ -44,6 +44,7 @@ interface SmsSettingsCardProps {
 const providerHelp: Record<SmsProvider, string> = {
   textit: "TextIt.biz — API Key = User ID, API Secret = Password",
   notifylk: "Notify.lk — API Key = User ID, API Secret = API Key, Sender ID required",
+  smslenz: "SMSlenz.lk — User ID + API Key from dashboard. Use SMSlenzDEMO as Sender ID for testing.",
   generic: "Custom URL with {to}, {message}, {sender}, {apiKey} placeholders",
 };
 
@@ -108,6 +109,7 @@ export function SmsSettingsCard({
                 <SelectContent>
                   <SelectItem value="textit">TextIt.biz</SelectItem>
                   <SelectItem value="notifylk">Notify.lk</SelectItem>
+                  <SelectItem value="smslenz">SMSlenz.lk</SelectItem>
                   <SelectItem value="generic">Custom HTTP API</SelectItem>
                 </SelectContent>
               </Select>
@@ -127,7 +129,13 @@ export function SmsSettingsCard({
             )}
 
             <div className="space-y-2">
-              <Label>{sms.provider === "textit" ? "User ID" : "API Key / User ID"}</Label>
+              <Label>
+                {sms.provider === "textit"
+                  ? "User ID"
+                  : sms.provider === "smslenz"
+                    ? "User ID"
+                    : "API Key / User ID"}
+              </Label>
               <Input
                 className="rounded-lg"
                 value={sms.apiKey}
@@ -136,7 +144,13 @@ export function SmsSettingsCard({
             </div>
 
             <div className="space-y-2">
-              <Label>{sms.provider === "textit" ? "Password" : "API Secret"}</Label>
+              <Label>
+                {sms.provider === "textit"
+                  ? "Password"
+                  : sms.provider === "smslenz"
+                    ? "API Key"
+                    : "API Secret"}
+              </Label>
               <Input
                 className="rounded-lg"
                 type="password"
@@ -146,15 +160,21 @@ export function SmsSettingsCard({
               />
             </div>
 
-            {(sms.provider === "notifylk" || sms.provider === "generic") && (
+            {(sms.provider === "notifylk" || sms.provider === "smslenz" || sms.provider === "generic") && (
               <div className="space-y-2 sm:col-span-2">
                 <Label>Sender ID</Label>
                 <Input
                   className="rounded-lg"
-                  placeholder="YourBrand"
+                  placeholder={sms.provider === "smslenz" ? "SMSlenzDEMO" : "YourBrand"}
                   value={sms.senderId}
                   onChange={(e) => onSmsChange({ ...sms, senderId: e.target.value })}
                 />
+                {sms.provider === "smslenz" && (
+                  <p className="text-xs text-muted-foreground">
+                    Use <strong>SMSlenzDEMO</strong> for testing (case sensitive). Use your approved
+                    mask after SMSlenz approves it.
+                  </p>
+                )}
               </div>
             )}
           </div>

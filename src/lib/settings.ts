@@ -1,7 +1,7 @@
 import { prisma } from "./prisma";
 import { companyInfo } from "./company";
 
-export type SmsProvider = "textit" | "notifylk" | "generic";
+export type SmsProvider = "textit" | "notifylk" | "smslenz" | "generic";
 
 export interface SmsGatewaySettings {
   enabled: boolean;
