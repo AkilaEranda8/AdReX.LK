@@ -89,7 +89,17 @@ export async function getCompanySettings(): Promise<SettingsData> {
   const row = await prisma.companySettings.findUnique({ where: { id: "default" } });
   if (!row) return defaults;
   try {
-    return { ...defaults, ...JSON.parse(row.data) };
+    const data = { ...defaults, ...JSON.parse(row.data) } as SettingsData;
+    const paymentTemplate = data.smsTemplates?.paymentReceived;
+    if (paymentTemplate && !paymentTemplate.includes("{{balance}}")) {
+      data.smsTemplates = {
+        ...defaults.smsTemplates,
+        ...data.smsTemplates,
+        paymentReceived: defaults.smsTemplates!.paymentReceived,
+      };
+      await saveCompanySettings(data);
+    }
+    return data;
   } catch {
     return defaults;
   }

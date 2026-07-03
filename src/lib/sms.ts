@@ -393,13 +393,28 @@ export async function sendPaymentReceivedSms(payment: PaymentSmsPayload): Promis
   }
 
   const settings = await getCompanySettings();
-  return sendTemplatedSms(phone, "paymentReceived", {
+  const templates = await getSmsTemplates();
+  const template = templates.paymentReceived || defaultSmsTemplates.paymentReceived;
+  const balanceText = formatCurrency(payment.balance);
+  const company = settings.brand || settings.name;
+  const vars = {
     clientName: payment.client.name,
     invoiceNumber: payment.invoiceNumber,
     amount: formatCurrency(payment.amount),
-    balance: formatCurrency(payment.balance),
-    company: settings.brand || settings.name,
-  });
+    balance: balanceText,
+    company,
+  };
+
+  let text = renderSmsTemplate(template, vars);
+  if (!text.includes(balanceText)) {
+    const companySuffix = company ? ` - ${company}` : "";
+    const base = companySuffix && text.endsWith(companySuffix)
+      ? text.slice(0, -companySuffix.length).trimEnd().replace(/\.$/, "")
+      : text.trimEnd().replace(/\.$/, "");
+    text = `${base}. Remaining balance: ${balanceText}${companySuffix}`;
+  }
+
+  return sendSms(phone, text);
 }
 
 export async function sendInvoiceSms(
