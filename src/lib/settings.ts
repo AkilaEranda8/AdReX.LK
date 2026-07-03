@@ -93,7 +93,7 @@ export async function getCompanySettings(): Promise<SettingsData> {
     const paymentTemplate = data.smsTemplates?.paymentReceived;
     if (paymentTemplate && !paymentTemplate.includes("{{balance}}")) {
       data.smsTemplates = {
-        ...defaults.smsTemplates,
+        ...defaults.smsTemplates!,
         ...data.smsTemplates,
         paymentReceived: defaults.smsTemplates!.paymentReceived,
       };
