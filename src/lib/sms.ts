@@ -267,6 +267,8 @@ export async function sendSms(
   }
 }
 
+export type SmsResult = { sent: boolean; message: string; skipped?: boolean };
+
 export type InvoiceSmsPayload = {
   client: { name: string; contactNumber: string };
   invoiceNumber: string;
@@ -285,10 +287,10 @@ export async function shouldAutoSendInvoiceSms(): Promise<boolean> {
 export async function sendInvoiceSms(
   invoice: InvoiceSmsPayload,
   templateKey: "invoiceSent" | "invoiceReminder" = "invoiceSent"
-) {
+): Promise<SmsResult> {
   const phone = invoice.client.contactNumber?.trim();
   if (!phone) {
-    return { sent: false, message: "Client has no contact number", skipped: true as const };
+    return { sent: false, message: "Client has no contact number", skipped: true };
   }
 
   const settings = await getCompanySettings();
@@ -302,12 +304,12 @@ export async function sendInvoiceSms(
   });
 }
 
-export async function sendInvoiceCreatedSms(invoice: InvoiceSmsPayload) {
+export async function sendInvoiceCreatedSms(invoice: InvoiceSmsPayload): Promise<SmsResult> {
   if (!(await shouldAutoSendInvoiceSms())) {
     return {
       sent: false,
       message: "Auto invoice SMS is disabled or gateway not configured",
-      skipped: true as const,
+      skipped: true,
     };
   }
 
