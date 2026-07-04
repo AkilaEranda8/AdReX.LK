@@ -20,6 +20,11 @@ export interface PaymentMethodPoint {
   amount: number;
 }
 
+export interface ExpenseCategoryPoint {
+  category: string;
+  amount: number;
+}
+
 export interface ReportChartsData {
   salesTrend: SalesTrendPoint[];
   invoiceStatus: {
@@ -30,6 +35,7 @@ export interface ReportChartsData {
   };
   topClients: TopClientPoint[];
   paymentMethods: PaymentMethodPoint[];
+  expensesByCategory: ExpenseCategoryPoint[];
 }
 
 function formatAxisValue(value: number) {
@@ -266,6 +272,50 @@ export function ReportPaymentMethodsChart({ data }: { data: PaymentMethodPoint[]
   );
 }
 
+export function ReportExpensesByCategoryChart({ data }: { data: ExpenseCategoryPoint[] }) {
+  const maxVal = Math.max(...data.map((d) => d.amount), 1);
+
+  if (data.length === 0) {
+    return (
+      <Card className="border-slate-200/80 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold">Expenses by Category</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="py-8 text-center text-sm text-muted-foreground">No expenses in this period</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-slate-200/80 shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold">Expenses by Category</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <svg viewBox="0 0 400 200" className="w-full">
+          {data.map((item, index) => {
+            const barWidth = (item.amount / maxVal) * 220;
+            const y = index * 28 + 8;
+            return (
+              <g key={item.category}>
+                <text x={0} y={y + 14} className="fill-muted-foreground text-[10px]">
+                  {item.category.length > 14 ? `${item.category.slice(0, 14)}…` : item.category}
+                </text>
+                <rect x={120} y={y} width={barWidth} height={18} rx={4} className="fill-red-400" opacity={0.85} />
+                <text x={120 + barWidth + 8} y={y + 14} className="fill-foreground text-[10px] font-medium">
+                  {formatCurrency(item.amount)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ReportChartsSection({ charts }: { charts: ReportChartsData }) {
   return (
     <div className="space-y-6">
@@ -279,6 +329,9 @@ export function ReportChartsSection({ charts }: { charts: ReportChartsData }) {
         <ReportTopClientsChart data={charts.topClients} />
         <ReportPaymentMethodsChart data={charts.paymentMethods} />
       </div>
+      {charts.expensesByCategory.length > 0 && (
+        <ReportExpensesByCategoryChart data={charts.expensesByCategory} />
+      )}
     </div>
   );
 }

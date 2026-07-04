@@ -17,6 +17,7 @@ import {
   Settings,
   RefreshCw,
   History,
+  Banknote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -41,6 +42,10 @@ const navGroups = [
       { href: "/credits", label: "Customer Credit", icon: CreditCard },
       { href: "/recurring", label: "Recurring", icon: RefreshCw },
     ],
+  },
+  {
+    label: "Finance",
+    items: [{ href: "/expenses", label: "Expenses", icon: Banknote }],
   },
   {
     label: "Insights",

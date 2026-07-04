@@ -37,6 +37,12 @@ enum QuotationStatus {
   CONVERTED
 }
 
+enum ExpenseStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
 model User {
   id                 String               @id @default(cuid())
   email              String               @unique
@@ -192,6 +198,22 @@ model CompanySettings {
   id        String   @id @default("default")
   data      String
   updatedAt DateTime @updatedAt
+}
+
+model Expense {
+  id            String        @id @default(cuid())
+  expenseNumber String        @unique
+  expenseDate   DateTime
+  category      String
+  vendor        String?
+  description   String
+  amount        Float
+  paymentMethod String?
+  reference     String?
+  status        ExpenseStatus @default(PAID)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 model SequenceCounter {

@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
   const period = searchParams.get("period") || "month";
   const now = new Date();
 
-  const [invoices, payments, clients] = await Promise.all([
+  const [invoices, payments, clients, expenses] = await Promise.all([
     prisma.invoice.findMany({
       include: { client: { select: { name: true, clientId: true } } },
       orderBy: { invoiceDate: "desc" },
@@ -140,16 +140,22 @@ export async function GET(request: NextRequest) {
       orderBy: { creditBalance: "desc" },
       select: { id: true, clientId: true, name: true, creditBalance: true },
     }),
+    prisma.expense.findMany({ orderBy: { expenseDate: "desc" } }),
   ]);
 
   const periodInvoices = invoices.filter(
     (i) => inPeriod(new Date(i.invoiceDate), period, now) && i.invoiceStatus !== "DRAFT"
   );
   const periodPayments = payments.filter((p) => inPeriod(new Date(p.paymentDate), period, now));
+  const periodExpenses = expenses.filter(
+    (e) => inPeriod(new Date(e.expenseDate), period, now) && e.status !== "CANCELLED"
+  );
 
   const periodSales = periodInvoices.reduce((s, i) => s + i.grandTotal, 0);
   const totalOutstanding = clients.reduce((s, c) => s + c.creditBalance, 0);
   const totalCollected = periodPayments.reduce((s, p) => s + p.amount, 0);
+  const totalExpenses = periodExpenses.reduce((s, e) => s + e.amount, 0);
+  const netProfit = periodSales - totalExpenses;
 
   const overdueInvoices = invoices.filter(
     (i) =>
@@ -179,6 +185,11 @@ export async function GET(request: NextRequest) {
     return acc;
   }, {});
 
+  const expensesByCategory = periodExpenses.reduce<Record<string, number>>((acc, e) => {
+    acc[e.category] = (acc[e.category] || 0) + e.amount;
+    return acc;
+  }, {});
+
   const charts = {
     salesTrend: buildSalesTrend(invoices, payments, period, now),
     invoiceStatus,
@@ -190,6 +201,10 @@ export async function GET(request: NextRequest) {
       .map(([method, amount]) => ({ method, amount }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 6),
+    expensesByCategory: Object.entries(expensesByCategory)
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 8),
   };
 
   return NextResponse.json({
@@ -197,6 +212,8 @@ export async function GET(request: NextRequest) {
       monthlySales: periodSales,
       totalOutstanding,
       totalCollected,
+      totalExpenses,
+      netProfit,
       overdueCount: overdueInvoices.length,
       overdueAmount: overdueInvoices.reduce((s, i) => s + i.remainingBalance, 0),
     },
@@ -210,6 +227,16 @@ export async function GET(request: NextRequest) {
     })),
     clientStatements: clients,
     recentPayments: periodPayments.slice(0, 50),
+    recentExpenses: periodExpenses.slice(0, 50).map((e) => ({
+      id: e.id,
+      expenseNumber: e.expenseNumber,
+      expenseDate: e.expenseDate,
+      category: e.category,
+      vendor: e.vendor,
+      description: e.description,
+      amount: e.amount,
+      status: e.status,
+    })),
     period,
   });
 }

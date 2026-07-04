@@ -49,6 +49,10 @@ function getPageTitle(pathname: string): string {
   if (pathname.match(/^\/quotations\/[^/]+\/edit$/)) return "Edit Quotation";
   if (pathname.match(/^\/quotations\/[^/]+$/)) return "View Quotation";
   if (pathname === "/credits") return "Customer Credit";
+  if (pathname === "/expenses") return "Expenses";
+  if (pathname === "/expenses/new") return "Record Expense";
+  if (pathname.match(/^\/expenses\/[^/]+\/edit$/)) return "Edit Expense";
+  if (pathname.match(/^\/expenses\/[^/]+$/)) return "View Expense";
   if (pathname === "/reports") return "Reports";
   if (pathname === "/settings") return "Settings";
   if (pathname === "/recurring") return "Recurring Invoices";

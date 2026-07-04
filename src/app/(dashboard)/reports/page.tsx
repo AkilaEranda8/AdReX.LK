@@ -10,9 +10,11 @@ import {
   OverdueInvoicesTable,
   ClientStatementsTable,
   RecentPaymentsTable,
+  RecentExpensesTable,
   type OverdueRow,
   type ClientStatementRow,
   type PaymentRow,
+  type ExpenseReportRow,
 } from "@/components/reports/report-tables";
 import { ReportChartsSection, type ReportChartsData } from "@/components/reports/report-charts";
 import { cn } from "@/lib/utils";
@@ -20,13 +22,15 @@ import api from "@/lib/api";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 
-type ReportTab = "overdue" | "statements" | "payments";
+type ReportTab = "overdue" | "statements" | "payments" | "expenses";
 
 interface ReportData {
   summary: {
     monthlySales: number;
     totalOutstanding: number;
     totalCollected: number;
+    totalExpenses: number;
+    netProfit: number;
     overdueCount: number;
     overdueAmount: number;
   };
@@ -34,12 +38,14 @@ interface ReportData {
   overdueInvoices: OverdueRow[];
   clientStatements: ClientStatementRow[];
   recentPayments: PaymentRow[];
+  recentExpenses: ExpenseReportRow[];
 }
 
 const tabs: { key: ReportTab; label: string }[] = [
   { key: "overdue", label: "Overdue Invoices" },
   { key: "statements", label: "Client Outstanding" },
   { key: "payments", label: "Recent Payments" },
+  { key: "expenses", label: "Recent Expenses" },
 ];
 
 export default function ReportsPage() {
@@ -96,6 +102,17 @@ export default function ReportsPage() {
     );
   }, [data, search]);
 
+  const filteredExpenses = useMemo(() => {
+    if (!data) return [];
+    return data.recentExpenses.filter(
+      (e) =>
+        filterText(e.expenseNumber) ||
+        filterText(e.description) ||
+        filterText(e.category) ||
+        filterText(e.vendor || "")
+    );
+  }, [data, search]);
+
   const handleExport = () => {
     if (!data) return;
     const wb = XLSX.utils.book_new();
@@ -129,6 +146,18 @@ export default function ReportsPage() {
       }))
     );
     XLSX.utils.book_append_sheet(wb, paySheet, "Payments");
+
+    const expSheet = XLSX.utils.json_to_sheet(
+      filteredExpenses.map((e) => ({
+        "Expense #": e.expenseNumber,
+        Date: e.expenseDate,
+        Category: e.category,
+        Description: e.description,
+        Amount: e.amount,
+        Status: e.status,
+      }))
+    );
+    XLSX.utils.book_append_sheet(wb, expSheet, "Expenses");
 
     XLSX.writeFile(wb, `reports-${period}.xlsx`);
   };
@@ -198,7 +227,9 @@ export default function ReportsPage() {
                 ? filteredOverdue.length
                 : tab.key === "statements"
                   ? filteredStatements.length
-                  : filteredPayments.length}
+                  : tab.key === "payments"
+                    ? filteredPayments.length
+                    : filteredExpenses.length}
               )
             </span>
           </button>
@@ -228,6 +259,16 @@ export default function ReportsPage() {
       {activeTab === "payments" && (
         <RecentPaymentsTable
           data={filteredPayments}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+        />
+      )}
+
+      {activeTab === "expenses" && (
+        <RecentExpensesTable
+          data={filteredExpenses}
           page={page}
           pageSize={pageSize}
           onPageChange={setPage}

@@ -22,6 +22,19 @@ export async function generateInvoiceNumber(): Promise<string> {
   return `INV-${yearMonth}-${String(counter.value).padStart(6, "0")}`;
 }
 
+export async function generateExpenseNumber(): Promise<string> {
+  const now = new Date();
+  const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const counterId = `expense-${yearMonth}`;
+
+  const counter = await prisma.sequenceCounter.upsert({
+    where: { id: counterId },
+    update: { value: { increment: 1 } },
+    create: { id: counterId, value: 1 },
+  });
+  return `EXP-${yearMonth}-${String(counter.value).padStart(6, "0")}`;
+}
+
 export async function generateQuotationNumber(): Promise<string> {
   const now = new Date();
   const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;

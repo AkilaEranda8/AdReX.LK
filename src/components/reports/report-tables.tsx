@@ -267,6 +267,93 @@ export function RecentPaymentsTable({
   );
 }
 
+export interface ExpenseReportRow {
+  id: string;
+  expenseNumber: string;
+  expenseDate: string;
+  category: string;
+  vendor: string | null;
+  description: string;
+  amount: number;
+  status: string;
+}
+
+export function RecentExpensesTable({
+  data,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  data: ExpenseReportRow[];
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+}) {
+  const total = data.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = (page - 1) * pageSize;
+  const rows = data.slice(start, start + pageSize);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="border-b px-4 py-3">
+        <h3 className="font-semibold text-slate-900">Recent Expenses</h3>
+        <p className="text-xs text-muted-foreground">Business expenses recorded in the selected period</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-sm">
+          <thead>
+            <tr className="border-b bg-slate-50/80 text-left text-xs font-medium text-muted-foreground">
+              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Expense #</th>
+              <th className="px-4 py-3">Category</th>
+              <th className="px-4 py-3">Description</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                  No expenses in selected period
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id} className="border-b last:border-0 hover:bg-slate-50/50">
+                  <td className="px-4 py-4 text-muted-foreground">{formatDate(row.expenseDate)}</td>
+                  <td className="px-4 py-4">
+                    <Link href={`/expenses/${row.id}`} prefetch={false} className="font-medium text-indigo-600 hover:underline">
+                      {row.expenseNumber}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-4">{row.category}</td>
+                  <td className="px-4 py-4 text-muted-foreground">{row.description}</td>
+                  <td className="px-4 py-4 capitalize">{row.status.toLowerCase()}</td>
+                  <td className="px-4 py-4 text-right font-semibold text-red-500">
+                    {formatCurrency(row.amount)}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      {total > 0 && (
+        <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {start + 1} to {Math.min(start + pageSize, total)} of {total}
+          </p>
+          <Pagination page={page} totalPages={totalPages} onPageChange={onPageChange} pageSize={pageSize} onPageSizeChange={onPageSizeChange} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Pagination({
   page,
   totalPages,

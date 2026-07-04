@@ -5,6 +5,8 @@ import {
   Wallet,
   CircleDollarSign,
   AlertTriangle,
+  Banknote,
+  TrendingDown,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -13,6 +15,8 @@ interface ReportStatCardsProps {
   monthlySales: number;
   totalOutstanding: number;
   totalCollected: number;
+  totalExpenses: number;
+  netProfit: number;
   overdueCount: number;
   overdueAmount: number;
 }
@@ -50,12 +54,30 @@ const cards = [
     iconBg: "bg-red-50",
     iconColor: "text-red-500",
   },
+  {
+    key: "expenses",
+    label: "Period Expenses",
+    sub: "Business costs in period",
+    icon: Banknote,
+    iconBg: "bg-orange-50",
+    iconColor: "text-orange-600",
+  },
+  {
+    key: "profit",
+    label: "Net Profit",
+    sub: "Sales minus expenses",
+    icon: TrendingDown,
+    iconBg: "bg-blue-50",
+    iconColor: "text-blue-600",
+  },
 ] as const;
 
 export function ReportStatCards({
   monthlySales,
   totalOutstanding,
   totalCollected,
+  totalExpenses,
+  netProfit,
   overdueCount,
   overdueAmount,
 }: ReportStatCardsProps) {
@@ -64,10 +86,12 @@ export function ReportStatCards({
     collected: formatCurrency(totalCollected),
     outstanding: formatCurrency(totalOutstanding),
     overdue: `${overdueCount} · ${formatCurrency(overdueAmount)}`,
+    expenses: formatCurrency(totalExpenses),
+    profit: formatCurrency(netProfit),
   };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
