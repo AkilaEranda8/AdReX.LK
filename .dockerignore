@@ -11,3 +11,6 @@ npm-debug.log*
 *.tsbuildinfo
 README.md
 deploy
+prisma/node_modules
+prisma/*.db
+prisma/dev.db
