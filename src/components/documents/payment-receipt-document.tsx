@@ -5,8 +5,10 @@ import {
   formatReceiptAmount,
   formatReceiptDate,
   getReceiptTotals,
+  getInvoiceReceiptTotals,
   mapReceiptItems,
   type ReceiptDocumentProps,
+  type InvoiceReceiptTotals,
 } from "@/lib/receipt-document";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,8 @@ export function PaymentReceiptDocument({
   items,
   subTotal,
   discount = 0,
+  taxRate = 0,
+  grandTotal,
   advance = 0,
   balanceDue,
   className,
@@ -39,7 +43,29 @@ export function PaymentReceiptDocument({
   showPaymentInfo = true,
 }: ReceiptDocumentProps) {
   const rows = mapReceiptItems(items);
-  const totals = getReceiptTotals(subTotal, discount, advance, balanceDue);
+  const totals: InvoiceReceiptTotals =
+    taxRate > 0 && grandTotal != null
+      ? getInvoiceReceiptTotals({
+          subTotal,
+          discount,
+          taxRate,
+          grandTotal,
+          advancePayment: advance,
+          remainingBalance: balanceDue,
+        })
+      : (() => {
+          const base = getReceiptTotals(subTotal, discount, advance, balanceDue);
+          return {
+            subTotal: base.subTotal,
+            discount: base.discount,
+            taxRate: 0,
+            taxAmount: 0,
+            grandTotal: grandTotal ?? base.subTotalLessDiscount,
+            subTotalLessDiscount: base.subTotalLessDiscount,
+            advance: base.advance,
+            balanceDue: base.balanceDue,
+          };
+        })();
   const minRows = Math.max(rows.length < 4 ? 4 - rows.length : 0, 8 - rows.length);
 
   return (
@@ -163,11 +189,22 @@ export function PaymentReceiptDocument({
         <div className="flex flex-col items-end text-[9pt] text-black">
           <div className="w-fit">
             {[
-              { label: "Sub Total", value: totals.subTotal },
-              { label: "Discount", value: totals.discount },
-              { label: "Sub Total less Discount", value: totals.subTotalLessDiscount },
-              { label: "Advance", value: totals.advance },
-            ].map((row) => (
+              { label: "Sub Total", value: totals.subTotal, show: true },
+              { label: "Discount", value: totals.discount, show: totals.discount > 0 },
+              {
+                label: `Tax (${totals.taxRate}%)`,
+                value: totals.taxAmount,
+                show: totals.taxAmount > 0,
+              },
+              {
+                label: totals.taxAmount > 0 ? "Total" : "Sub Total less Discount",
+                value: totals.taxAmount > 0 ? totals.grandTotal : totals.subTotalLessDiscount,
+                show: true,
+              },
+              { label: "Advance", value: totals.advance, show: totals.advance > 0 },
+            ]
+              .filter((row) => row.show)
+              .map((row) => (
               <div key={row.label} className="grid grid-cols-[11.5rem_7rem] items-center py-1">
                 <span className="whitespace-nowrap pr-2 text-right text-gray-700">{row.label}</span>
                 <span className="whitespace-nowrap text-right font-medium tabular-nums">

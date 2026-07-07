@@ -401,17 +401,16 @@ export function CreateInvoiceForm({
                 />
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">Tax</span>
-                <Select value={String(taxRate)} onValueChange={(v) => setValue("taxRate", Number(v))}>
-                  <SelectTrigger className="h-8 w-28 rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">No Tax</SelectItem>
-                    <SelectItem value="15">VAT 15%</SelectItem>
-                    <SelectItem value="18">VAT 18%</SelectItem>
-                  </SelectContent>
-                </Select>
+                <span className="text-muted-foreground">Tax (%)</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="0"
+                  className="h-8 w-28 rounded-lg text-right"
+                  {...register("taxRate", { valueAsNumber: true })}
+                />
               </div>
               {taxRate > 0 && (
                 <div className="flex justify-between text-muted-foreground">

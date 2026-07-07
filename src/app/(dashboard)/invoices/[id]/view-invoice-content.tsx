@@ -35,6 +35,7 @@ interface InvoiceDetail {
   invoiceDate: string;
   subTotal: number;
   discount: number;
+  taxRate: number;
   advancePayment: number;
   grandTotal: number;
   remainingBalance: number;
@@ -223,7 +224,9 @@ export default function ViewInvoiceContent() {
                 clientName={invoice.client.name}
                 items={invoice.items}
                 subTotal={invoice.subTotal}
-                discount={Math.abs(invoice.discount)}
+                discount={invoice.discount}
+                taxRate={invoice.taxRate || 0}
+                grandTotal={invoice.grandTotal}
                 advance={invoice.advancePayment}
                 balanceDue={invoice.remainingBalance}
                 dateLabel={documentMeta.dateLabel}
@@ -241,6 +244,24 @@ export default function ViewInvoiceContent() {
               <CardTitle className="text-base font-semibold">Payment Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Sub Total</span>
+                  <span className="font-medium">{formatCurrency(invoice.subTotal)}</span>
+                </div>
+                {(invoice.taxRate || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tax ({invoice.taxRate}%)</span>
+                    <span className="font-medium text-amber-600">
+                      {formatCurrency(
+                        Math.round(
+                          (invoice.grandTotal - invoice.grandTotal / (1 + (invoice.taxRate || 0) / 100)) * 100
+                        ) / 100
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-muted/50 p-3 text-center">
                   <p className="text-xs text-muted-foreground">Grand Total</p>

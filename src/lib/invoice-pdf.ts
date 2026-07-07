@@ -9,6 +9,7 @@ type InvoicePdfSource = {
   paymentStatus: string;
   subTotal: number;
   discount: number;
+  taxRate?: number;
   advancePayment: number;
   grandTotal: number;
   remainingBalance: number;
@@ -26,6 +27,7 @@ export async function buildInvoicePdfData(invoice: InvoicePdfSource): Promise<Do
     items: invoice.items,
     subTotal: invoice.subTotal,
     discount: invoice.discount,
+    taxRate: invoice.taxRate ?? 0,
     advancePayment: invoice.advancePayment,
     grandTotal: invoice.grandTotal,
     remainingBalance: invoice.remainingBalance,

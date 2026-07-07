@@ -5,9 +5,11 @@ import {
   formatReceiptAmount,
   formatReceiptDate,
   getReceiptTotals,
+  getInvoiceReceiptTotals,
   getInvoiceDocumentTitle,
   getInvoiceDocumentMeta,
   mapReceiptItems,
+  type InvoiceReceiptTotals,
   type ReceiptLineItem,
 } from "@/lib/receipt-document";
 
@@ -19,6 +21,7 @@ export interface DocumentData {
   items: ReceiptLineItem[];
   subTotal?: number;
   discount?: number;
+  taxRate?: number;
   advancePayment?: number;
   grandTotal: number;
   remainingBalance?: number;
@@ -76,7 +79,7 @@ interface PdfBuildContext {
   data: DocumentData;
   title: string;
   meta: { dateLabel: string; numberLabel: string };
-  totals: ReturnType<typeof getReceiptTotals>;
+  totals: InvoiceReceiptTotals;
 }
 
 function setColor(doc: jsPDF, rgb: [number, number, number]) {
@@ -431,20 +434,25 @@ function drawBottomSection(doc: jsPDF, ctx: PdfBuildContext, y: number, footerLi
   });
 
   const totalRows = [
-    ["Sub Total", totals.subTotal],
-    ["Discount", totals.discount],
-    ["Sub Total less Discount", totals.subTotalLessDiscount],
-    ["Advance", totals.advance],
-  ] as const;
+    { label: "Sub Total", value: totals.subTotal, show: true },
+    { label: "Discount", value: totals.discount, show: totals.discount > 0 },
+    { label: `Tax (${totals.taxRate}%)`, value: totals.taxAmount, show: totals.taxAmount > 0 },
+    {
+      label: totals.taxAmount > 0 ? "Total" : "Sub Total less Discount",
+      value: totals.taxAmount > 0 ? totals.grandTotal : totals.subTotalLessDiscount,
+      show: true,
+    },
+    { label: "Advance", value: totals.advance, show: totals.advance > 0 },
+  ].filter((row) => row.show);
 
   const { rightX, valueX, labelX, labelW, valueW } = getTotalsLayout();
 
   doc.setFontSize(scFont(LAYOUT.font.body));
-  totalRows.forEach(([label, value]) => {
+  totalRows.forEach((row) => {
     doc.setFont("helvetica", "normal");
     setColor(doc, [0, 0, 0]);
-    doc.text(label, valueX - 2, rightY, { align: "right" });
-    doc.text(formatReceiptAmount(value), rightX, rightY, { align: "right" });
+    doc.text(row.label, valueX - 2, rightY, { align: "right" });
+    doc.text(formatReceiptAmount(row.value), rightX, rightY, { align: "right" });
     rightY += sc(5.5, 4);
   });
 
@@ -477,9 +485,31 @@ export function generatePDF(data: DocumentData): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
 
   const subTotal = data.subTotal ?? data.items.reduce((s, i) => s + i.total, 0);
-  const discount = Math.abs(data.discount ?? 0);
   const advance = data.advancePayment ?? 0;
   const balanceDue = data.remainingBalance ?? data.grandTotal;
+  const totals: InvoiceReceiptTotals =
+    data.type === "invoice" && data.grandTotal != null
+      ? getInvoiceReceiptTotals({
+          subTotal,
+          discount: data.discount ?? 0,
+          taxRate: data.taxRate ?? 0,
+          grandTotal: data.grandTotal,
+          advancePayment: advance,
+          remainingBalance: balanceDue,
+        })
+      : (() => {
+          const base = getReceiptTotals(subTotal, Math.abs(data.discount ?? 0), advance, balanceDue);
+          return {
+            subTotal: base.subTotal,
+            discount: base.discount,
+            taxRate: 0,
+            taxAmount: 0,
+            grandTotal: data.grandTotal,
+            subTotalLessDiscount: base.subTotalLessDiscount,
+            advance: base.advance,
+            balanceDue: base.balanceDue,
+          };
+        })();
   const title =
     data.documentTitle ??
     (data.type === "invoice"
@@ -489,7 +519,6 @@ export function generatePDF(data: DocumentData): jsPDF {
     data.type === "invoice"
       ? getInvoiceDocumentMeta(balanceDue, data.invoiceStatus ?? data.status, data.paymentStatus)
       : { dateLabel: "Quotation Date", numberLabel: "Quotation No" };
-  const totals = getReceiptTotals(subTotal, discount, advance, balanceDue);
   const rows = mapReceiptItems(data.items);
 
   const ctx: PdfBuildContext = { doc, company, data, title, meta, totals };

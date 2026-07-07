@@ -16,6 +16,8 @@ export interface ReceiptDocumentProps {
   items: ReceiptLineItem[];
   subTotal: number;
   discount?: number;
+  taxRate?: number;
+  grandTotal?: number;
   advance?: number;
   balanceDue: number;
   className?: string;
@@ -75,4 +77,54 @@ export function getReceiptTotals(subTotal: number, discount = 0, advance = 0, ba
   const subTotalLessDiscount = Math.round((subTotal - discount) * 100) / 100;
   const due = balanceDue ?? Math.max(0, subTotalLessDiscount - advance);
   return { subTotal, discount, subTotalLessDiscount, advance, balanceDue: due };
+}
+
+export interface InvoiceReceiptTotals {
+  subTotal: number;
+  discount: number;
+  taxRate: number;
+  taxAmount: number;
+  grandTotal: number;
+  subTotalLessDiscount: number;
+  advance: number;
+  balanceDue: number;
+}
+
+export function getInvoiceReceiptTotals(invoice: {
+  subTotal: number;
+  discount: number;
+  taxRate: number;
+  grandTotal: number;
+  advancePayment: number;
+  remainingBalance: number;
+}): InvoiceReceiptTotals {
+  const taxRate = invoice.taxRate || 0;
+  if (taxRate > 0) {
+    const taxableBase = Math.round((invoice.grandTotal / (1 + taxRate / 100)) * 100) / 100;
+    const taxAmount = Math.round((invoice.grandTotal - taxableBase) * 100) / 100;
+    const userDiscount = Math.max(0, Math.round((invoice.subTotal - taxableBase) * 100) / 100);
+    return {
+      subTotal: invoice.subTotal,
+      discount: userDiscount,
+      taxRate,
+      taxAmount,
+      grandTotal: invoice.grandTotal,
+      subTotalLessDiscount: taxableBase,
+      advance: invoice.advancePayment,
+      balanceDue: invoice.remainingBalance,
+    };
+  }
+
+  const userDiscount = Math.max(0, invoice.discount);
+  const subTotalLessDiscount = Math.round((invoice.subTotal - userDiscount) * 100) / 100;
+  return {
+    subTotal: invoice.subTotal,
+    discount: userDiscount,
+    taxRate: 0,
+    taxAmount: 0,
+    grandTotal: invoice.grandTotal ?? subTotalLessDiscount,
+    subTotalLessDiscount,
+    advance: invoice.advancePayment,
+    balanceDue: invoice.remainingBalance,
+  };
 }
