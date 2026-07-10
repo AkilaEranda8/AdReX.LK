@@ -15,12 +15,12 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
   return (
     <div
       className={cn(
-        "flex min-h-screen flex-col transition-all duration-300 ease-out",
+        "flex min-h-screen min-w-0 flex-col overflow-x-hidden transition-all duration-300 ease-out",
         collapsed ? "lg:pl-[72px]" : "lg:pl-[252px]"
       )}
     >
       <AppHeader user={user} />
-      <div className="flex-1">{children}</div>
+      <main className="min-w-0 flex-1">{children}</main>
     </div>
   );
 }

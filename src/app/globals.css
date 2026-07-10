@@ -89,10 +89,44 @@
   border-color: hsl(var(--border));
 }
 
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+  min-height: 100dvh;
+}
+
+/* Prevent horizontal page scroll from wide tables/charts */
+.overflow-x-touch {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* Scroll hint shadow for horizontal table containers */
+.table-scroll-shadow {
+  position: relative;
+}
+.table-scroll-shadow::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(to left, hsl(var(--card) / 0.9), transparent);
+}
+@media (min-width: 768px) {
+  .table-scroll-shadow::after {
+    display: none;
+  }
 }
 
 /* Dark mode overrides for legacy hardcoded utility classes */

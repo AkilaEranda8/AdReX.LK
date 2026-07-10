@@ -20,6 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatCurrency, cn } from "@/lib/utils";
+import { TableScroll } from "@/components/ui/table-scroll";
+import {
+  MobileRecordActions,
+  MobileRecordCard,
+  MobileRecordRow,
+} from "@/components/ui/mobile-record-card";
 
 export interface CreditRow {
   id: string;
@@ -82,7 +88,57 @@ export function CreditTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="overflow-x-auto">
+      <div className="space-y-3 p-3 md:hidden">
+        {rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No credit records found</p>
+        ) : (
+          rows.map((row) => {
+            const isSelected = selected.includes(row.id);
+            return (
+              <MobileRecordCard key={row.id} selected={isSelected}>
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <Checkbox checked={isSelected} onCheckedChange={(c) => onSelect(row.id, !!c)} />
+                    <div className="min-w-0">
+                      <Link href={`/credits/${row.id}`} className="font-semibold text-foreground hover:text-indigo-600">
+                        {row.name}
+                      </Link>
+                      <p className="mt-0.5 text-sm text-indigo-600">{row.clientId}</p>
+                    </div>
+                  </div>
+                  <p className="shrink-0 text-sm font-bold text-red-500">{formatCurrency(row.outstandingBalance)}</p>
+                </div>
+                <div className="space-y-2">
+                  <MobileRecordRow label="Total Credit">{formatCurrency(row.totalCredit)}</MobileRecordRow>
+                  <MobileRecordRow label="Paid">{formatCurrency(row.paidAmount)}</MobileRecordRow>
+                  <MobileRecordRow label="Progress">
+                    <PaymentProgress paid={row.paidAmount} total={row.totalCredit} />
+                  </MobileRecordRow>
+                </div>
+                <MobileRecordActions>
+                  <Link href={`/credits/${row.id}`}>
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-lg">
+                      <Eye className="h-4 w-4" />
+                      View
+                    </Button>
+                  </Link>
+                  <Button variant="outline" size="sm" className="gap-1.5 rounded-lg text-emerald-600" onClick={() => onRecordPayment(row)}>
+                    <DollarSign className="h-4 w-4" />
+                    Record Payment
+                  </Button>
+                  <Link href={`/credits/${row.id}/payment`}>
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-lg">
+                      Pay
+                    </Button>
+                  </Link>
+                </MobileRecordActions>
+              </MobileRecordCard>
+            );
+          })
+        )}
+      </div>
+
+      <TableScroll className="hidden md:block">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
             <tr className="border-b bg-slate-50/80 text-left text-xs font-medium text-muted-foreground">
@@ -173,15 +229,15 @@ export function CreditTable({
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
 
       <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           Showing {total === 0 ? 0 : start + 1} to {Math.min(start + pageSize, total)} of {total} clients
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Rows per page</span>
+            <span className="hidden sm:inline">Rows per page</span>
             <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
               <SelectTrigger className="h-8 w-[70px]">
                 <SelectValue />

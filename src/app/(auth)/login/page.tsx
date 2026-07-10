@@ -79,7 +79,7 @@ export default function LoginPage() {
 
       <div
         className={cn(
-          "w-full max-w-md rounded-2xl border p-8",
+          "w-full max-w-md rounded-2xl border p-6 sm:p-8",
           "border-slate-200/80 bg-white shadow-xl shadow-slate-200/60 ring-1 ring-slate-100",
           "dark:border-slate-700/50 dark:bg-[#111827]/95 dark:shadow-2xl dark:shadow-indigo-950/50 dark:ring-white/5"
         )}

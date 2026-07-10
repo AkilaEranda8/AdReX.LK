@@ -24,6 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { TableScroll } from "@/components/ui/table-scroll";
+import {
+  MobileRecordActions,
+  MobileRecordCard,
+  MobileRecordRow,
+} from "@/components/ui/mobile-record-card";
 import {
   INVOICE_WORKFLOW_OPTIONS,
 } from "@/lib/invoice-status";
@@ -127,7 +133,84 @@ export function InvoiceTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="overflow-x-auto">
+      <div className="space-y-3 p-3 md:hidden">
+        {rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No invoices found</p>
+        ) : (
+          rows.map((row) => {
+            const isSelected = selected.includes(row.id);
+            return (
+              <MobileRecordCard key={row.id} selected={isSelected}>
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(c) => onSelect(row.id, !!c)}
+                    />
+                    <div className="min-w-0">
+                      <Link
+                        href={`/invoices/${row.id}`}
+                        className="font-semibold text-indigo-600 hover:underline"
+                      >
+                        {row.invoiceNumber}
+                      </Link>
+                      <p className="mt-0.5 truncate text-sm text-muted-foreground">{row.client.name}</p>
+                    </div>
+                  </div>
+                  <p className="shrink-0 text-sm font-bold">{formatCurrency(row.grandTotal)}</p>
+                </div>
+                <div className="space-y-2">
+                  <MobileRecordRow label="Invoice Date">{formatDate(row.invoiceDate)}</MobileRecordRow>
+                  <MobileRecordRow label="Due Date">{formatDate(getDueDate(row))}</MobileRecordRow>
+                  <MobileRecordRow label="Payment">
+                    <PaymentBadge paymentStatus={row.paymentStatus} />
+                  </MobileRecordRow>
+                  <MobileRecordRow label="Status">
+                    <InvoiceWorkflowBadge invoiceStatus={row.invoiceStatus} />
+                  </MobileRecordRow>
+                </div>
+                <MobileRecordActions>
+                  <Link href={`/invoices/${row.id}`}>
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-lg">
+                      <Eye className="h-4 w-4" />
+                      View
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 rounded-lg"
+                    onClick={() => onDownload(row)}
+                    disabled={row.invoiceStatus === "DRAFT"}
+                  >
+                    <Download className="h-4 w-4" />
+                    PDF
+                  </Button>
+                  <Link href={`/invoices/${row.id}/edit`}>
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-lg">
+                      <Pencil className="h-4 w-4" />
+                      Edit
+                    </Button>
+                  </Link>
+                  {onDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 rounded-lg text-red-600"
+                      onClick={() => onDelete(row)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  )}
+                </MobileRecordActions>
+              </MobileRecordCard>
+            );
+          })
+        )}
+      </div>
+
+      <TableScroll className="hidden md:block">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
             <tr className="border-b bg-slate-50/80 text-left text-xs font-medium text-muted-foreground">
@@ -276,15 +359,15 @@ export function InvoiceTable({
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
 
       <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           Showing {total === 0 ? 0 : start + 1} to {Math.min(start + pageSize, total)} of {total} invoices
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Rows per page</span>
+            <span className="hidden sm:inline">Rows per page</span>
             <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
               <SelectTrigger className="h-8 w-[70px]">
                 <SelectValue />

@@ -106,8 +106,8 @@ export function AppHeader({ user, title }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-border bg-card/90 backdrop-blur-xl supports-[backdrop-filter]:bg-card/75">
-      <div className="flex h-[72px] w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-4">
+      <div className="flex flex-col gap-3 px-4 py-3 sm:px-6 lg:h-[72px] lg:flex-row lg:items-center lg:gap-4 lg:px-8 lg:py-0">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <button
             type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -117,19 +117,140 @@ export function AppHeader({ user, title }: AppHeaderProps) {
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
-          <div className="min-w-0 max-w-[72px] sm:max-w-none">
+          <div className="min-w-0 flex-1">
             <p className="hidden text-[11px] font-medium uppercase tracking-wider text-muted-foreground md:block">
               {appBranding.name}
             </p>
-            <h1 className="truncate text-sm font-bold text-foreground sm:text-lg lg:text-xl">{pageTitle}</h1>
+            <h1 className="truncate text-base font-bold text-foreground sm:text-lg lg:text-xl">{pageTitle}</h1>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3 lg:hidden">
+            <ThemeToggle compact />
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setNotifOpen(!notifOpen);
+                  setProfileOpen(false);
+                }}
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-all hover:bg-accent hover:text-foreground"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {overdue.length > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                    {overdue.length}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-transparent"
+                    aria-hidden
+                    onClick={() => setNotifOpen(false)}
+                  />
+                  <div className="absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-border bg-card shadow-xl">
+                    <div className="border-b border-border px-4 py-3">
+                      <p className="font-semibold text-foreground">Notifications</p>
+                      <p className="text-xs text-muted-foreground">Overdue invoices</p>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto p-2">
+                      {overdue.length === 0 ? (
+                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">No overdue invoices</p>
+                      ) : (
+                        overdue.map((inv) => (
+                          <Link
+                            key={inv.id}
+                            href={`/invoices/${inv.id}`}
+                            prefetch={false}
+                            onClick={() => setNotifOpen(false)}
+                            className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-accent"
+                          >
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground">{inv.invoiceNumber}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Due {formatDate(inv.dueDate)} · {formatCurrency(inv.remainingBalance)}
+                              </p>
+                            </div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                    {overdue.length > 0 && (
+                      <div className="border-t p-2">
+                        <Link
+                          href="/reports"
+                          prefetch={false}
+                          onClick={() => setNotifOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                        >
+                          View all reports
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileOpen(!profileOpen);
+                  setNotifOpen(false);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card shadow-sm transition-all hover:bg-accent"
+                aria-label="Profile menu"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white">
+                  {getInitials(user.name)}
+                </div>
+              </button>
+              {profileOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-transparent"
+                    aria-hidden
+                    onClick={() => setProfileOpen(false)}
+                  />
+                  <div className="absolute right-0 top-12 z-50 w-52 rounded-xl border border-border bg-card py-1 shadow-xl">
+                    <div className="border-b border-border px-4 py-3">
+                      <p className="font-semibold text-foreground">{user.name}</p>
+                      <p className="text-xs capitalize text-muted-foreground">{user.role.toLowerCase()}</p>
+                    </div>
+                    <Link
+                      href="/settings"
+                      prefetch={false}
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-accent"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Logout
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 px-2 sm:px-4 lg:px-8">
+        <div className="hidden min-w-0 flex-1 px-2 sm:px-4 lg:flex lg:px-8">
           <GlobalSearch />
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="hidden shrink-0 items-center gap-2 sm:gap-3 lg:flex">
           <ThemeToggle compact className="hidden sm:flex" />
 
           <div className="relative">
@@ -231,10 +352,6 @@ export function AppHeader({ user, title }: AppHeaderProps) {
                   onClick={() => setProfileOpen(false)}
                 />
                 <div className="absolute right-0 top-12 z-50 w-52 rounded-xl border border-border bg-card py-1 shadow-xl">
-                  <div className="border-b border-border px-4 py-3 lg:hidden">
-                    <p className="font-semibold text-foreground">{user.name}</p>
-                    <p className="text-xs capitalize text-muted-foreground">{user.role.toLowerCase()}</p>
-                  </div>
                   <Link
                     href="/settings"
                     prefetch={false}
@@ -256,6 +373,10 @@ export function AppHeader({ user, title }: AppHeaderProps) {
               </>
             )}
           </div>
+        </div>
+
+        <div className="lg:hidden">
+          <GlobalSearch />
         </div>
       </div>
     </header>

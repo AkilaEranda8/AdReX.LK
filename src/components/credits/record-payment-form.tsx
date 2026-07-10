@@ -84,7 +84,7 @@ export function RecordPaymentForm({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" className="rounded-lg" onClick={onCancel}>
             Cancel
           </Button>

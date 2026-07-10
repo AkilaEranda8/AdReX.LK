@@ -131,7 +131,7 @@ export function CreateQuotationForm({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" className="rounded-lg" onClick={onCancel}>
             Cancel
           </Button>
@@ -235,7 +235,7 @@ export function CreateQuotationForm({
               <CardTitle className="text-base font-semibold">Quotation Items</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-touch">
                 <table className="w-full min-w-[700px] text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs text-muted-foreground">

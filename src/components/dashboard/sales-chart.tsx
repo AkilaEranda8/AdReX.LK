@@ -42,7 +42,7 @@ export function SalesChart({ data }: { data: SalesData[] }) {
 
   return (
     <Card className="border-slate-200/80 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardHeader className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="text-base font-semibold">Sales Overview</CardTitle>
         <Select defaultValue="monthly">
           <SelectTrigger className="h-8 w-[110px] text-xs">
@@ -65,8 +65,8 @@ export function SalesChart({ data }: { data: SalesData[] }) {
             Last Month
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[500px]">
+        <div className="overflow-x-touch">
+          <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full min-w-0">
             {yLabels.map((l) => (
               <g key={l.label}>
                 <line

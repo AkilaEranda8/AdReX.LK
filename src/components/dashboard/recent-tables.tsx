@@ -85,7 +85,31 @@ export function RecentInvoicesTable({ data }: { data: RecentInvoice[] }) {
         </Link>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="space-y-0 md:hidden">
+          {data.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-muted-foreground">No invoices yet</p>
+          ) : (
+            data.map((row) => (
+              <div key={row.id} className="border-b px-4 py-4 last:border-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link href={`/invoices/${row.id}`} className="font-semibold text-blue-600 hover:underline">
+                      {row.invoiceNumber}
+                    </Link>
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">{row.client}</p>
+                  </div>
+                  <p className="shrink-0 text-sm font-bold">{formatCurrency(row.amount)}</p>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{formatDate(row.date)}</span>
+                  <StatusBadge status={row.status} type="invoice" />
+                  <StatusBadge status={row.payment} type="invoice" />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="hidden overflow-x-touch md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-y bg-slate-50/80 text-left text-xs text-muted-foreground">
@@ -142,7 +166,30 @@ export function RecentQuotationsTable({ data }: { data: RecentQuotation[] }) {
         </Link>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="space-y-0 md:hidden">
+          {data.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-muted-foreground">No quotations yet</p>
+          ) : (
+            data.map((row) => (
+              <div key={row.id} className="border-b px-4 py-4 last:border-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link href={`/quotations/${row.id}`} className="font-semibold text-blue-600 hover:underline">
+                      {row.quotationNumber}
+                    </Link>
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">{row.client}</p>
+                  </div>
+                  <p className="shrink-0 text-sm font-bold">{formatCurrency(row.amount)}</p>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{formatDate(row.date)}</span>
+                  <StatusBadge status={row.status} type="quotation" />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="hidden overflow-x-touch md:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-y bg-slate-50/80 text-left text-xs text-muted-foreground">

@@ -77,15 +77,15 @@ export function PaymentReceiptDocument({
       )}
     >
       {/* Header */}
-      <div className="flex items-start justify-between border-b-2 border-black pb-4">
+      <div className="flex flex-col gap-4 border-b-2 border-black pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-[22pt] font-black leading-none tracking-tight">{companyInfo.brand}</p>
+          <p className="text-[22pt] font-black leading-none tracking-tight sm:text-[22pt]">{companyInfo.brand}</p>
           <p className="mt-1 text-[8pt] font-bold uppercase tracking-[0.18em] text-gray-600">
             {companyInfo.tagline}
           </p>
           <p className="mt-0.5 text-[9pt] text-gray-600">{companyInfo.website}</p>
         </div>
-        <div className="text-right text-[9pt] leading-relaxed text-black">
+        <div className="text-left text-[9pt] leading-relaxed text-black sm:text-right">
           <p className="text-[10pt] font-bold">{companyInfo.name}</p>
           <p className="mt-1 text-gray-700">{companyInfo.phones.join(" | ")}</p>
           {companyInfo.emails.map((email) => (
@@ -102,7 +102,7 @@ export function PaymentReceiptDocument({
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <p className="text-[10pt]">
           <span className="font-bold">Client :</span>{" "}
-          <span className="inline-block min-w-[180px] border-b border-gray-500 pb-0.5 font-medium">
+          <span className="inline-block min-w-0 border-b border-gray-500 pb-0.5 font-medium sm:min-w-[180px]">
             {clientName}
           </span>
         </p>
@@ -115,7 +115,8 @@ export function PaymentReceiptDocument({
       </div>
 
       {/* Items table */}
-      <table className="w-full border-collapse text-[9pt] text-black">
+      <div className="overflow-x-touch -mx-2 px-2 sm:mx-0 sm:px-0">
+      <table className="w-full min-w-[480px] border-collapse text-[9pt] text-black">
         <thead>
           <tr className="bg-black text-white">
             <th className={cn("w-10 px-1 py-2 text-center text-[8.5pt] font-bold", tableBorder, "border-black")}>
@@ -165,6 +166,7 @@ export function PaymentReceiptDocument({
           ))}
         </tbody>
       </table>
+      </div>
 
       {/* Bottom section */}
       <div className="invoice-bottom mt-5 grid grid-cols-1 gap-6 md:grid-cols-2">
