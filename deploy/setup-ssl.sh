@@ -1,3 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+
+DOMAIN="invoice.hexalyte.com"
+APP_DIR="/root/adrex-invoice"
+EMAIL="admin@adrexlk.com"
+
+cd "${APP_DIR}"
+
+apt-get update -qq
+apt-get install -y -qq certbot
+
+mkdir -p deploy/certbot/www deploy/certbot/conf
+
+echo "==> Requesting Let's Encrypt certificate for ${DOMAIN}"
+certbot certonly --webroot \
+  -w "${APP_DIR}/deploy/certbot/www" \
+  -d "${DOMAIN}" \
+  --email "${EMAIL}" \
+  --agree-tos \
+  --non-interactive \
+  --keep-until-expiring \
+  --config-dir "${APP_DIR}/deploy/certbot/conf" \
+  --work-dir /var/lib/letsencrypt \
+  --logs-dir /var/log/letsencrypt
+
+# Copy certs into the path nginx expects (same volume mount)
+mkdir -p "${APP_DIR}/deploy/certbot/conf/live/${DOMAIN}"
+
+cat > "${APP_DIR}/deploy/nginx-standalone.conf" <<'NGINX'
 upstream invoice_app {
     server adrex-invoice-app:3000;
 }
@@ -49,3 +79,13 @@ server {
         proxy_read_timeout 120s;
     }
 }
+NGINX
+
+# Ensure docker volume sees host certs — compose mounts ./deploy/certbot/conf
+# certbot already wrote into that path when using --config-dir
+
+docker compose -f docker-compose.standalone.yml exec -T nginx nginx -t
+docker compose -f docker-compose.standalone.yml exec -T nginx nginx -s reload
+
+echo "==> HTTPS ready"
+curl -sI https://invoice.hexalyte.com/login | head -8
