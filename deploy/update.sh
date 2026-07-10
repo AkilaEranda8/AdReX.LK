@@ -6,6 +6,14 @@ APP_DIR="${APP_DIR:-/root/adrex-invoice}"
 COMPOSE_FILE="${COMPOSE_FILE:-${APP_DIR}/docker-compose.prod.yml}"
 BRANCH="${BRANCH:-main}"
 
+compose() {
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+  else
+    docker-compose "$@"
+  fi
+}
+
 echo "==> Updating AdReX Invoice in ${APP_DIR}"
 
 if [ ! -d "${APP_DIR}" ]; then
@@ -26,8 +34,8 @@ git checkout "${BRANCH}"
 git pull origin "${BRANCH}"
 
 echo "==> Rebuilding and restarting container..."
-docker compose -f "${COMPOSE_FILE}" build
-docker compose -f "${COMPOSE_FILE}" up -d
+compose -f "${COMPOSE_FILE}" build
+compose -f "${COMPOSE_FILE}" up -d
 
 echo "==> Waiting for health check..."
 for i in $(seq 1 30); do
