@@ -23,6 +23,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
+## Production Deployment
+
+See **[deploy/DEPLOY.md](deploy/DEPLOY.md)** for hosting on `invoice.hexalyte.com`.
+
+Quick update on the server:
+
+```bash
+cd /root/adrex-invoice && bash deploy/update.sh
+```
+
 ### Demo Credentials
 
 | Role  | Email            | Password  |

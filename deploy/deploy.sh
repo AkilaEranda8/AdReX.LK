@@ -24,8 +24,8 @@ if [ ! -f .env ]; then
 fi
 
 echo "==> Building and starting invoice app..."
-docker-compose -f "${COMPOSE_FILE}" build
-docker-compose -f "${COMPOSE_FILE}" up -d
+docker compose -f "${COMPOSE_FILE}" build
+docker compose -f "${COMPOSE_FILE}" up -d
 
 echo "==> Waiting for app..."
 for i in $(seq 1 45); do
@@ -67,7 +67,7 @@ PY
 
 reload_nginx() {
   cd "${IMS_DIR}"
-  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx
   sleep 2
   docker exec nginx-proxy-ims nginx -t
   docker exec nginx-proxy-ims nginx -s reload

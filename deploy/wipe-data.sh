@@ -8,7 +8,7 @@ echo "==> Wiping all table data on production..."
 
 cd "${APP_DIR}"
 
-docker-compose -f "${COMPOSE_FILE}" up -d
+docker compose -f "${COMPOSE_FILE}" up -d
 
 docker exec adrex-invoice-app node prisma/wipe-all.bundle.cjs
 docker exec adrex-invoice-app sh -c 'rm -rf /app/uploads/*'
