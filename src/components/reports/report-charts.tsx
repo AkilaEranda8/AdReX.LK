@@ -77,8 +77,8 @@ export function ReportSalesChart({ data }: { data: SalesTrendPoint[] }) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[520px]">
+        <div className="overflow-x-touch">
+          <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full min-w-0">
             {yLabels.map((l) => (
               <g key={l.label}>
                 <line

@@ -16,7 +16,7 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen min-w-0 overflow-x-hidden bg-background">
         <Sidebar user={user} />
         <DashboardShell user={user}>{children}</DashboardShell>
       </div>

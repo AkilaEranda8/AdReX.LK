@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -20,6 +20,12 @@ export const metadata: Metadata = {
   description: appBranding.description,
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -38,7 +44,8 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <Toaster
-            position="top-right"
+            position="top-center"
+            containerClassName="!top-4 sm:!top-4"
             toastOptions={{
               duration: 3000,
               style: {

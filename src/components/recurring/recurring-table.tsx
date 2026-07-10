@@ -24,6 +24,12 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { FREQUENCY_LABELS, isDueSoon, isOverdue } from "@/lib/recurring";
+import { TableScroll } from "@/components/ui/table-scroll";
+import {
+  MobileRecordActions,
+  MobileRecordCard,
+  MobileRecordRow,
+} from "@/components/ui/mobile-record-card";
 
 export interface RecurringRow {
   id: string;
@@ -112,7 +118,63 @@ export function RecurringTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="overflow-x-auto">
+      <div className="space-y-3 p-3 md:hidden">
+        {rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No recurring invoices found</p>
+        ) : (
+          rows.map((row) => {
+            const isSelected = selected.includes(row.id);
+            return (
+              <MobileRecordCard key={row.id} selected={isSelected}>
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <Checkbox checked={isSelected} onCheckedChange={(c) => onSelect(row.id, !!c)} />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground">{row.client.name}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">{row.client.clientId}</p>
+                    </div>
+                  </div>
+                  <StatusBadge active={row.active} nextDate={row.nextDate} />
+                </div>
+                <div className="space-y-2">
+                  <MobileRecordRow label="Frequency">{FREQUENCY_LABELS[row.frequency] || row.frequency}</MobileRecordRow>
+                  <MobileRecordRow label="Next Date">{formatDate(row.nextDate)}</MobileRecordRow>
+                  <MobileRecordRow label="Items">{row.itemCount}</MobileRecordRow>
+                  <MobileRecordRow label="Total">{formatCurrency(row.total)}</MobileRecordRow>
+                </div>
+                <MobileRecordActions>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 rounded-lg"
+                    onClick={() => onGenerate(row)}
+                    disabled={generatingId === row.id}
+                  >
+                    <Play className="h-4 w-4" />
+                    {generatingId === row.id ? "Generating..." : "Generate"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 rounded-lg"
+                    onClick={() => onToggleActive(row)}
+                    disabled={togglingId === row.id}
+                  >
+                    {row.active ? <Pause className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
+                    {row.active ? "Pause" : "Resume"}
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 rounded-lg text-red-600" onClick={() => onDelete(row)}>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                </MobileRecordActions>
+              </MobileRecordCard>
+            );
+          })
+        )}
+      </div>
+
+      <TableScroll className="hidden md:block">
         <table className="w-full min-w-[980px] text-sm">
           <thead>
             <tr className="border-b bg-slate-50/80 text-left text-xs font-medium text-muted-foreground">
@@ -235,15 +297,15 @@ export function RecurringTable({
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
 
       <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           Showing {total === 0 ? 0 : start + 1} to {Math.min(start + pageSize, total)} of {total} schedules
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Rows per page</span>
+            <span className="hidden sm:inline">Rows per page</span>
             <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
               <SelectTrigger className="h-8 w-[70px]">
                 <SelectValue />
