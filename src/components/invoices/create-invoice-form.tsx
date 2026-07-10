@@ -126,7 +126,7 @@ export function CreateInvoiceForm({
         e.preventDefault();
         onSubmit();
       }}
-      className="space-y-6"
+      className="space-y-6 pb-28 lg:pb-0"
     >
       {/* Page header actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -135,7 +135,7 @@ export function CreateInvoiceForm({
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
               {mode === "edit" ? "Edit Invoice" : "Create Invoice"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -171,8 +171,8 @@ export function CreateInvoiceForm({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left column */}
-        <div className="space-y-6 lg:col-span-2">
+        {/* Main form — below summary on mobile */}
+        <div className="order-2 space-y-6 lg:order-1 lg:col-span-2">
           {/* Invoice Details */}
           <Card className="border-slate-200/80 shadow-sm">
             <CardHeader className="pb-4">
@@ -186,7 +186,7 @@ export function CreateInvoiceForm({
                 <Label>
                   Client <span className="text-red-500">*</span>
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Select value={watch("clientId")} onValueChange={(v) => setValue("clientId", v)}>
                     <SelectTrigger className="rounded-lg">
                       <SelectValue placeholder="Select client" />
@@ -199,8 +199,8 @@ export function CreateInvoiceForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Link href="/clients/new">
-                    <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1 rounded-lg text-indigo-600">
+                  <Link href="/clients/new" className="sm:shrink-0">
+                    <Button type="button" variant="outline" size="sm" className="w-full gap-1 rounded-lg text-indigo-600 sm:w-auto">
                       <UserPlus className="h-4 w-4" />
                       Add New Client
                     </Button>
@@ -256,7 +256,58 @@ export function CreateInvoiceForm({
               <CardTitle className="text-base font-semibold">Invoice Items</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-touch">
+              {/* Mobile line items */}
+              <div className="space-y-3 md:hidden">
+                {fields.map((field, index) => {
+                  const price = Number(watch(`items.${index}.price`)) || 0;
+                  const qty = Number(watch(`items.${index}.quantity`)) || 0;
+                  const disc = Number(watch(`items.${index}.itemDiscount`)) || 0;
+                  const total = calcLineTotal(price, qty, disc);
+                  return (
+                    <div key={field.id} className="rounded-xl border border-border bg-muted/30 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-foreground">Item {index + 1}</span>
+                        {fields.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(index)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Item Name</Label>
+                          <Input placeholder="Item name" className="rounded-lg" {...register(`items.${index}.itemName`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Description</Label>
+                          <Input placeholder="Description" className="rounded-lg" {...register(`items.${index}.description`)} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Price (Rs.)</Label>
+                            <Input type="number" step="0.01" className="rounded-lg" {...register(`items.${index}.price`, { valueAsNumber: true })} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Qty</Label>
+                            <Input type="number" className="rounded-lg" {...register(`items.${index}.quantity`, { valueAsNumber: true })} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Discount (%)</Label>
+                            <Input type="number" className="rounded-lg" {...register(`items.${index}.itemDiscount`, { valueAsNumber: true })} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Total</Label>
+                            <p className="flex h-10 items-center rounded-lg bg-background px-3 text-sm font-semibold">{formatCurrency(total)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-touch md:block">
                 <table className="w-full min-w-[700px] text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs text-muted-foreground">
@@ -329,7 +380,7 @@ export function CreateInvoiceForm({
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                 <Button
                   type="button"
                   className="gap-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
@@ -379,8 +430,8 @@ export function CreateInvoiceForm({
           </Card>
         </div>
 
-        {/* Right column */}
-        <div className="space-y-6">
+        {/* Summary sidebar — first on mobile */}
+        <div className="order-1 space-y-6 lg:order-2">
           {/* Invoice Summary */}
           <Card className="border-slate-200/80 shadow-sm">
             <CardHeader className="pb-3">
@@ -509,6 +560,24 @@ export function CreateInvoiceForm({
               </Button>
             </CardContent>
           </Card>
+        </div>
+      </div>
+
+      {/* Sticky mobile summary + save */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 p-4 shadow-lg backdrop-blur-md lg:hidden">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Grand Total</p>
+            <p className="text-xl font-bold text-indigo-600">{formatCurrency(grandTotal)}</p>
+            <p className="truncate text-xs text-muted-foreground">Balance: {formatCurrency(remainingBalance)}</p>
+          </div>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="shrink-0 gap-2 rounded-lg bg-indigo-600 px-5 text-white hover:bg-indigo-700"
+          >
+            {isSubmitting ? "Saving..." : mode === "edit" ? "Update" : "Save Invoice"}
+          </Button>
         </div>
       </div>
     </form>

@@ -111,7 +111,7 @@ export function CreateQuotationForm({
         e.preventDefault();
         onSubmit();
       }}
-      className="space-y-6"
+      className="space-y-6 pb-28 lg:pb-0"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
@@ -119,7 +119,7 @@ export function CreateQuotationForm({
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
               {mode === "edit" ? "Edit Quotation" : "Create Quotation"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -155,7 +155,7 @@ export function CreateQuotationForm({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="order-2 space-y-6 lg:order-1 lg:col-span-2">
           <Card className="border-slate-200/80 shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -168,7 +168,7 @@ export function CreateQuotationForm({
                 <Label>
                   Client <span className="text-red-500">*</span>
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Select value={watch("clientId")} onValueChange={(v) => setValue("clientId", v)}>
                     <SelectTrigger className="rounded-lg">
                       <SelectValue placeholder="Select client" />
@@ -181,8 +181,8 @@ export function CreateQuotationForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Link href="/clients/new">
-                    <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1 rounded-lg text-indigo-600">
+                  <Link href="/clients/new" className="sm:shrink-0">
+                    <Button type="button" variant="outline" size="sm" className="w-full gap-1 rounded-lg text-indigo-600 sm:w-auto">
                       <UserPlus className="h-4 w-4" />
                       Add Client
                     </Button>
@@ -235,7 +235,50 @@ export function CreateQuotationForm({
               <CardTitle className="text-base font-semibold">Quotation Items</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-touch">
+              <div className="space-y-3 md:hidden">
+                {fields.map((field, index) => {
+                  const price = Number(watch(`items.${index}.price`)) || 0;
+                  const qty = Number(watch(`items.${index}.quantity`)) || 0;
+                  const lineTotal = calcLineTotal(price, qty);
+                  return (
+                    <div key={field.id} className="rounded-xl border border-border bg-muted/30 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <span className="text-sm font-semibold">Item {index + 1}</span>
+                        {fields.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(index)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Item Name</Label>
+                          <Input placeholder="Item name" className="rounded-lg" {...register(`items.${index}.itemName`)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Description</Label>
+                          <Input placeholder="Description" className="rounded-lg" {...register(`items.${index}.description`)} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Price (Rs.)</Label>
+                            <Input type="number" step="0.01" className="rounded-lg" {...register(`items.${index}.price`, { valueAsNumber: true })} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Qty</Label>
+                            <Input type="number" className="rounded-lg" {...register(`items.${index}.quantity`, { valueAsNumber: true })} />
+                          </div>
+                          <div className="col-span-2 space-y-1.5">
+                            <Label className="text-xs">Total</Label>
+                            <p className="flex h-10 items-center rounded-lg bg-background px-3 text-sm font-semibold">{formatCurrency(lineTotal)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-touch md:block">
                 <table className="w-full min-w-[700px] text-sm">
                   <thead>
                     <tr className="border-b text-left text-xs text-muted-foreground">
@@ -345,7 +388,7 @@ export function CreateQuotationForm({
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="order-1 space-y-6 lg:order-2">
           <Card className="border-slate-200/80 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold">Quotation Summary</CardTitle>
@@ -410,6 +453,23 @@ export function CreateQuotationForm({
               </Button>
             </CardContent>
           </Card>
+        </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 p-4 shadow-lg backdrop-blur-md lg:hidden">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Grand Total</p>
+            <p className="text-xl font-bold text-indigo-600">{formatCurrency(grandTotal)}</p>
+            <p className="text-xs text-muted-foreground">{items.length} item(s)</p>
+          </div>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="shrink-0 gap-2 rounded-lg bg-indigo-600 px-5 text-white hover:bg-indigo-700"
+          >
+            {isSubmitting ? "Saving..." : mode === "edit" ? "Update" : "Save"}
+          </Button>
         </div>
       </div>
     </form>
