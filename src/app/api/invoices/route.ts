@@ -52,10 +52,11 @@ export async function POST(request: NextRequest) {
       total: calculateItemTotal(item.price, item.quantity),
     }));
 
+    const advancePayment = body.advancePayment || 0;
     const { subTotal, grandTotal, remainingBalance } = calculateInvoiceTotals(
       items,
       body.discount || 0,
-      isDraft ? 0 : body.advancePayment || 0
+      advancePayment
     );
 
     const { invoiceStatus, paymentStatus } = syncInvoiceStatuses(
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
           taxRate: body.taxRate || 0,
           subTotal,
           discount: body.discount || 0,
-          advancePayment: isDraft ? 0 : body.advancePayment || 0,
+          advancePayment,
           grandTotal,
           remainingBalance: isDraft ? 0 : remainingBalance,
           invoiceStatus,

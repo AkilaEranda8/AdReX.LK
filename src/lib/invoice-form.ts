@@ -34,7 +34,7 @@ export function buildInvoiceApiPayload(data: InvoiceFormData, isDraft = false) {
       quantity: item.quantity,
     })),
     discount: apiDiscount,
-    advancePayment: isDraft ? 0 : data.advancePayment || 0,
+    advancePayment: data.advancePayment || 0,
   };
 }
 

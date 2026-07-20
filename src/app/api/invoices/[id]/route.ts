@@ -55,9 +55,10 @@ export async function PUT(
     }
 
     const wasDraft = existing.invoiceStatus === "DRAFT";
+    const newAdvance = body.advancePayment || 0;
+    // Draft advances are stored for editing but not applied to AR until publish
     const previousAdvance = wasDraft ? 0 : existing.advancePayment;
-    const newAdvance = isDraft ? 0 : body.advancePayment || 0;
-    const advanceDelta = Math.round((newAdvance - previousAdvance) * 100) / 100;
+    const advanceDelta = isDraft ? 0 : Math.round((newAdvance - previousAdvance) * 100) / 100;
 
     const items = body.items.map((item: { itemName: string; price: number; quantity: number }) => ({
       itemName: item.itemName,
@@ -66,10 +67,10 @@ export async function PUT(
       total: calculateItemTotal(item.price, item.quantity),
     }));
 
-    const { subTotal, grandTotal, remainingBalance } = calculateInvoiceTotals(
+    const { subTotal, grandTotal } = calculateInvoiceTotals(
       items,
       body.discount || 0,
-      isDraft ? 0 : body.advancePayment || 0
+      newAdvance
     );
 
     const totalPayments = await prisma.payment.aggregate({
@@ -79,7 +80,7 @@ export async function PUT(
     const paymentsSum = totalPayments._sum.amount || 0;
     const newRemaining = isDraft
       ? 0
-      : Math.round((grandTotal - (body.advancePayment || 0) - paymentsSum) * 100) / 100;
+      : Math.round((grandTotal - newAdvance - paymentsSum) * 100) / 100;
     const { invoiceStatus, paymentStatus } = syncInvoiceStatuses(
       newRemaining,
       grandTotal,
@@ -103,7 +104,7 @@ export async function PUT(
           taxRate: body.taxRate || 0,
           subTotal,
           discount: body.discount || 0,
-          advancePayment: isDraft ? 0 : body.advancePayment || 0,
+          advancePayment: newAdvance,
           grandTotal,
           remainingBalance: newRemaining,
           invoiceStatus,
