@@ -24,6 +24,17 @@ export interface ReceiptDocumentProps {
   dateLabel?: string;
   numberLabel?: string;
   showPaymentInfo?: boolean;
+  company?: {
+    brand: string;
+    name: string;
+    tagline: string;
+    website: string;
+    phones: string[];
+    emails: string[];
+    banks: { name: string; accountNo: string; branch: string; accountName: string }[];
+    remarks: string;
+    copyright: string;
+  };
 }
 
 export function formatReceiptAmount(value: number) {

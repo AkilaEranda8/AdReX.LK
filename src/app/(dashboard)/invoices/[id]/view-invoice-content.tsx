@@ -25,6 +25,7 @@ import { getInvoiceDocumentTitle, getInvoiceDocumentMeta } from "@/lib/receipt-d
 import { getWhatsAppPaymentLink } from "@/lib/whatsapp";
 import { InvoiceStatusControl } from "@/components/invoices/invoice-status-control";
 import type { InvoiceWorkflowStatus } from "@/lib/invoice-status";
+import { fetchCompanyForPdf, type PdfCompanyInfo } from "@/lib/pdf-settings";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 
@@ -80,6 +81,7 @@ export default function ViewInvoiceContent() {
   const searchParams = useSearchParams();
   const id = params.id as string;
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
+  const [company, setCompany] = useState<PdfCompanyInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [sendingSms, setSendingSms] = useState(false);
@@ -90,6 +92,19 @@ export default function ViewInvoiceContent() {
       return res.data as InvoiceDetail;
     });
   };
+
+  useEffect(() => {
+    Promise.all([loadInvoice(), fetchCompanyForPdf()])
+      .then(([data, companyInfo]) => {
+        setCompany(companyInfo);
+        if (searchParams.get("print") === "true") {
+          setTimeout(() => handlePrint(data), 500);
+        }
+      })
+      .catch(() => toast.error("Failed to load invoice"))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, searchParams]);
 
   const handlePrint = async (data: InvoiceDetail) => {
     const pdfData = await buildInvoicePdfData(data);
@@ -105,15 +120,6 @@ export default function ViewInvoiceContent() {
       toast.error("Failed to generate PDF");
     }
   };
-
-  useEffect(() => {
-    loadInvoice().then((data) => {
-      setLoading(false);
-      if (searchParams.get("print") === "true") {
-        setTimeout(() => handlePrint(data), 500);
-      }
-    });
-  }, [id, searchParams]);
 
   const handleStatusChange = async (invoiceStatus: InvoiceWorkflowStatus) => {
     setUpdatingStatus(true);
@@ -231,6 +237,7 @@ export default function ViewInvoiceContent() {
                 balanceDue={invoice.remainingBalance}
                 dateLabel={documentMeta.dateLabel}
                 numberLabel={documentMeta.numberLabel}
+                company={company || undefined}
               />
             </CardContent>
           </Card>

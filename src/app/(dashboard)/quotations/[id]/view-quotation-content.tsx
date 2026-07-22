@@ -20,6 +20,7 @@ import { PaymentReceiptDocument } from "@/components/documents/payment-receipt-d
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { downloadPDF, printPDF } from "@/lib/pdf";
 import { getValidUntilFromDate } from "@/lib/quotation-form";
+import { fetchCompanyForPdf, type PdfCompanyInfo } from "@/lib/pdf-settings";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 
@@ -39,15 +40,18 @@ export default function ViewQuotationContent() {
   const router = useRouter();
   const id = params.id as string;
   const [quotation, setQuotation] = useState<QuotationDetail | null>(null);
+  const [company, setCompany] = useState<PdfCompanyInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
   const [sendingSms, setSendingSms] = useState(false);
 
   useEffect(() => {
-    api.get(`/quotations/${id}`).then((res) => {
-      setQuotation(res.data);
-      setLoading(false);
-    });
+    Promise.all([api.get(`/quotations/${id}`), fetchCompanyForPdf()])
+      .then(([res, companyInfo]) => {
+        setQuotation(res.data);
+        setCompany(companyInfo);
+      })
+      .finally(() => setLoading(false));
   }, [id]);
 
   const handleConvert = async () => {
@@ -152,6 +156,7 @@ export default function ViewQuotationContent() {
                 subTotal={quotation.grandTotal}
                 balanceDue={quotation.grandTotal}
                 showPaymentInfo={false}
+                company={company || undefined}
               />
             </CardContent>
           </Card>

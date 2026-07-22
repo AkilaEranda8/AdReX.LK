@@ -41,7 +41,9 @@ export function PaymentReceiptDocument({
   dateLabel = "Invoice Date",
   numberLabel = "Invoice No",
   showPaymentInfo = true,
+  company,
 }: ReceiptDocumentProps) {
+  const companyInfoResolved = company || companyInfo;
   const rows = mapReceiptItems(items);
   const totals: InvoiceReceiptTotals =
     taxRate > 0 && grandTotal != null
@@ -79,16 +81,16 @@ export function PaymentReceiptDocument({
       {/* Header */}
       <div className="flex flex-col gap-4 border-b-2 border-black pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-[22pt] font-black leading-none tracking-tight sm:text-[22pt]">{companyInfo.brand}</p>
+          <p className="text-[22pt] font-black leading-none tracking-tight sm:text-[22pt]">{companyInfoResolved.brand}</p>
           <p className="mt-1 text-[8pt] font-bold uppercase tracking-[0.18em] text-gray-600">
-            {companyInfo.tagline}
+            {companyInfoResolved.tagline}
           </p>
-          <p className="mt-0.5 text-[9pt] text-gray-600">{companyInfo.website}</p>
+          <p className="mt-0.5 text-[9pt] text-gray-600">{companyInfoResolved.website}</p>
         </div>
         <div className="text-left text-[9pt] leading-relaxed text-black sm:text-right">
-          <p className="text-[10pt] font-bold">{companyInfo.name}</p>
-          <p className="mt-1 text-gray-700">{companyInfo.phones.join(" | ")}</p>
-          {companyInfo.emails.map((email) => (
+          <p className="text-[10pt] font-bold">{companyInfoResolved.name}</p>
+          <p className="mt-1 text-gray-700">{companyInfoResolved.phones.join(" | ")}</p>
+          {companyInfoResolved.emails.map((email) => (
             <p key={email} className="text-gray-700">
               {email}
             </p>
@@ -174,7 +176,7 @@ export function PaymentReceiptDocument({
           {showPaymentInfo && (
             <>
               <p className="mb-2 text-[10pt] font-bold">Payment Information</p>
-              {companyInfo.banks.map((bank) => (
+              {companyInfoResolved.banks.map((bank) => (
                 <div key={bank.name} className="mb-3">
                   <p className="font-bold">{bank.name}</p>
                   <p className="text-gray-700">Acc No : {bank.accountNo}</p>
@@ -185,7 +187,7 @@ export function PaymentReceiptDocument({
             </>
           )}
           <p className={cn("text-[10pt] font-bold", showPaymentInfo && "mt-2")}>Remarks:</p>
-          <p className="mt-1 text-[8.5pt] leading-relaxed text-gray-600">- {companyInfo.remarks}</p>
+          <p className="mt-1 text-[8.5pt] leading-relaxed text-gray-600">- {companyInfoResolved.remarks}</p>
         </div>
 
         <div className="flex flex-col items-end text-[9pt] text-black">
@@ -235,8 +237,8 @@ export function PaymentReceiptDocument({
       {/* Footer */}
       <div className="invoice-footer mt-8 border-t-2 border-black pt-3">
         <div className="flex items-end justify-between gap-4">
-          <p className="flex-1 text-center text-[8pt] text-gray-600">{companyInfo.copyright}</p>
-          <p className="text-[11pt] font-black">{companyInfo.brand}</p>
+          <p className="flex-1 text-center text-[8pt] text-gray-600">{companyInfoResolved.copyright}</p>
+          <p className="text-[11pt] font-black">{companyInfoResolved.brand}</p>
         </div>
       </div>
     </div>

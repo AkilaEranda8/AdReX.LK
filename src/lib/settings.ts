@@ -47,6 +47,19 @@ export interface ProfitAllocationSettings {
   lowSavingsWarning: number;
 }
 
+export type BankAccount = {
+  name: string;
+  accountNo: string;
+  branch: string;
+  accountName: string;
+};
+
+export function formatBankLabel(bank: BankAccount) {
+  const name = bank.name?.trim() || "Bank";
+  const accountNo = bank.accountNo?.trim();
+  return accountNo ? `${name} — ${accountNo}` : name;
+}
+
 export interface SettingsData {
   brand: string;
   name: string;
@@ -54,7 +67,7 @@ export interface SettingsData {
   website: string;
   phones: string[];
   emails: string[];
-  banks: { name: string; accountNo: string; branch: string; accountName: string }[];
+  banks: BankAccount[];
   remarks: string;
   smtp?: SmtpSettings;
   sms?: SmsGatewaySettings;

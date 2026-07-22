@@ -12,7 +12,7 @@ import { SmsSettingsCard, type SmsForm } from "@/components/settings/sms-setting
 import { ThemeToggle } from "@/components/theme-toggle";
 import api from "@/lib/api";
 import { defaultSmsTemplates, defaultSmsAutoNotifications, type SmsTemplates } from "@/lib/sms";
-import type { SmsProvider } from "@/lib/settings";
+import type { SmsProvider, BankAccount } from "@/lib/settings";
 import toast from "react-hot-toast";
 import {
   Mail,
@@ -25,6 +25,7 @@ import {
   Trash2,
   Save,
 } from "lucide-react";
+import Link from "next/link";
 
 type SmtpForm = {
   host: string;
@@ -33,13 +34,6 @@ type SmtpForm = {
   pass: string;
   from: string;
   secure: boolean;
-};
-
-type BankAccount = {
-  name: string;
-  accountNo: string;
-  branch: string;
-  accountName: string;
 };
 
 const emptyBank = (): BankAccount => ({
@@ -326,7 +320,12 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Bank accounts shown on invoice and receipt PDFs under Payment Information.
+                Bank accounts shown on invoice and receipt PDFs under Payment Information. You can
+                also manage them from{" "}
+                <Link href="/banks" className="font-medium text-indigo-600 underline">
+                  Finance → Bank Accounts
+                </Link>
+                .
               </p>
               {banks.map((bank, index) => (
                 <div

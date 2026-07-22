@@ -119,7 +119,7 @@ export async function PUT(request: NextRequest) {
     await saveCompanySettings({
       ...existing,
       ...body,
-      banks: body.banks?.length ? body.banks : existing.banks,
+      banks: Array.isArray(body.banks) ? body.banks : existing.banks,
       smtp,
       sms,
       smsTemplates,

@@ -53,6 +53,7 @@ function getPageTitle(pathname: string): string {
   if (pathname === "/expenses/new") return "Record Expense";
   if (pathname.match(/^\/expenses\/[^/]+\/edit$/)) return "Edit Expense";
   if (pathname.match(/^\/expenses\/[^/]+$/)) return "View Expense";
+  if (pathname === "/banks") return "Bank Accounts";
   if (pathname === "/profit-allocation") return "Profit Allocation";
   if (pathname === "/reports") return "Reports";
   if (pathname === "/settings") return "Settings";

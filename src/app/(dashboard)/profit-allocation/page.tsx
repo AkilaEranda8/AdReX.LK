@@ -32,7 +32,8 @@ import {
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
-import type { ProfitAllocationSettings } from "@/lib/settings";
+import type { BankAccount, ProfitAllocationSettings } from "@/lib/settings";
+import { formatBankLabel } from "@/lib/settings";
 
 type PeriodType = "day" | "week" | "month" | "year";
 type TabKey = "allocations" | "growth" | "savings" | "history";
@@ -116,6 +117,7 @@ export default function ProfitAllocationPage() {
   const [savingsTx, setSavingsTx] = useState<SavingsRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [settingsForm, setSettingsForm] = useState<ProfitAllocationSettings | null>(null);
+  const [bankOptions, setBankOptions] = useState<BankAccount[]>([]);
   const [savingSettings, setSavingSettings] = useState(false);
 
   const load = useCallback(async () => {
@@ -169,8 +171,12 @@ export default function ProfitAllocationPage() {
 
   const openSettings = async () => {
     try {
-      const res = await api.get("/profit-allocation/settings");
-      setSettingsForm(res.data);
+      const [settingsRes, companyRes] = await Promise.all([
+        api.get("/profit-allocation/settings"),
+        api.get("/settings"),
+      ]);
+      setSettingsForm(settingsRes.data);
+      setBankOptions(companyRes.data.banks || []);
       setSettingsOpen(true);
     } catch {
       toast.error("Failed to load settings");
@@ -423,19 +429,87 @@ export default function ProfitAllocationPage() {
               </label>
               <div className="space-y-2">
                 <Label>Operating Bank</Label>
-                <Input
-                  value={settingsForm.operatingBank}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, operatingBank: e.target.value })}
-                  className="rounded-lg"
-                />
+                {bankOptions.length > 0 ? (
+                  <Select
+                    value={settingsForm.operatingBank}
+                    onValueChange={(value) =>
+                      setSettingsForm({ ...settingsForm, operatingBank: value })
+                    }
+                  >
+                    <SelectTrigger className="rounded-lg">
+                      <SelectValue placeholder="Select operating bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankOptions.map((bank) => {
+                        const label = formatBankLabel(bank);
+                        return (
+                          <SelectItem key={`op-${label}`} value={label}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                      {settingsForm.operatingBank &&
+                        !bankOptions.some((b) => formatBankLabel(b) === settingsForm.operatingBank) && (
+                          <SelectItem value={settingsForm.operatingBank}>
+                            {settingsForm.operatingBank}
+                          </SelectItem>
+                        )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={settingsForm.operatingBank}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, operatingBank: e.target.value })}
+                    className="rounded-lg"
+                    placeholder="Add banks under Finance → Bank Accounts"
+                  />
+                )}
+                {bankOptions.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No banks saved yet.{" "}
+                    <a href="/banks" className="text-indigo-600 underline">
+                      Add bank accounts
+                    </a>
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Savings Bank</Label>
-                <Input
-                  value={settingsForm.savingsBank}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, savingsBank: e.target.value })}
-                  className="rounded-lg"
-                />
+                {bankOptions.length > 0 ? (
+                  <Select
+                    value={settingsForm.savingsBank}
+                    onValueChange={(value) =>
+                      setSettingsForm({ ...settingsForm, savingsBank: value })
+                    }
+                  >
+                    <SelectTrigger className="rounded-lg">
+                      <SelectValue placeholder="Select savings bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankOptions.map((bank) => {
+                        const label = formatBankLabel(bank);
+                        return (
+                          <SelectItem key={`sv-${label}`} value={label}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                      {settingsForm.savingsBank &&
+                        !bankOptions.some((b) => formatBankLabel(b) === settingsForm.savingsBank) && (
+                          <SelectItem value={settingsForm.savingsBank}>
+                            {settingsForm.savingsBank}
+                          </SelectItem>
+                        )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={settingsForm.savingsBank}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, savingsBank: e.target.value })}
+                    className="rounded-lg"
+                    placeholder="Add banks under Finance → Bank Accounts"
+                  />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">

@@ -19,6 +19,7 @@ import {
   History,
   Banknote,
   PiggyBank,
+  Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -48,6 +49,7 @@ const navGroups = [
     label: "Finance",
     items: [
       { href: "/expenses", label: "Expenses", icon: Banknote },
+      { href: "/banks", label: "Bank Accounts", icon: Landmark },
       { href: "/profit-allocation", label: "Profit Allocation", icon: PiggyBank },
     ],
   },
