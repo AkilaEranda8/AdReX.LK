@@ -37,6 +37,16 @@ export interface SmtpSettings {
   secure: boolean;
 }
 
+export interface ProfitAllocationSettings {
+  enabled: boolean;
+  autoAllocate: boolean;
+  operatingBank: string;
+  savingsBank: string;
+  operatingPercent: number;
+  savingsPercent: number;
+  lowSavingsWarning: number;
+}
+
 export interface SettingsData {
   brand: string;
   name: string;
@@ -49,7 +59,18 @@ export interface SettingsData {
   smtp?: SmtpSettings;
   sms?: SmsGatewaySettings;
   smsTemplates?: SmsTemplates;
+  profitAllocation?: ProfitAllocationSettings;
 }
+
+export const defaultProfitAllocation: ProfitAllocationSettings = {
+  enabled: true,
+  autoAllocate: false,
+  operatingBank: "Operating Bank (Bank A)",
+  savingsBank: "Savings Bank (Bank B)",
+  operatingPercent: 90,
+  savingsPercent: 10,
+  lowSavingsWarning: 10000,
+};
 
 const defaults: SettingsData = {
   brand: companyInfo.brand,
@@ -83,6 +104,7 @@ const defaults: SettingsData = {
     quotationSent:
       "Dear {{clientName}}, quotation {{quotationNumber}} for {{amount}} from {{company}}. Contact us to proceed.",
   },
+  profitAllocation: { ...defaultProfitAllocation },
 };
 
 let paymentTemplateMigrated = false;
@@ -91,7 +113,15 @@ export async function getCompanySettings(): Promise<SettingsData> {
   const row = await prisma.companySettings.findUnique({ where: { id: "default" } });
   if (!row) return defaults;
   try {
-    const data = { ...defaults, ...JSON.parse(row.data) } as SettingsData;
+    const parsed = JSON.parse(row.data) as Partial<SettingsData>;
+    const data = {
+      ...defaults,
+      ...parsed,
+      profitAllocation: {
+        ...defaultProfitAllocation,
+        ...(parsed.profitAllocation || {}),
+      },
+    } as SettingsData;
     const paymentTemplate = data.smsTemplates?.paymentReceived;
     if (
       !paymentTemplateMigrated &&

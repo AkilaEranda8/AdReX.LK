@@ -150,11 +150,14 @@ export async function GET(request: NextRequest) {
   const periodExpenses = expenses.filter(
     (e) => inPeriod(new Date(e.expenseDate), period, now) && e.status !== "CANCELLED"
   );
+  const operationalExpenses = periodExpenses.filter(
+    (e) => (e as { expenseKind?: string }).expenseKind !== "GROWTH"
+  );
 
   const periodSales = periodInvoices.reduce((s, i) => s + i.grandTotal, 0);
   const totalOutstanding = clients.reduce((s, c) => s + c.creditBalance, 0);
   const totalCollected = periodPayments.reduce((s, p) => s + p.amount, 0);
-  const totalExpenses = periodExpenses.reduce((s, e) => s + e.amount, 0);
+  const totalExpenses = operationalExpenses.reduce((s, e) => s + e.amount, 0);
   const netProfit = periodSales - totalExpenses;
 
   const overdueInvoices = invoices.filter(
@@ -185,7 +188,7 @@ export async function GET(request: NextRequest) {
     return acc;
   }, {});
 
-  const expensesByCategory = periodExpenses.reduce<Record<string, number>>((acc, e) => {
+  const expensesByCategory = operationalExpenses.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] || 0) + e.amount;
     return acc;
   }, {});

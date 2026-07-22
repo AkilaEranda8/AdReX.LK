@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { resolveExpenseKind } from "@/lib/expense-categories";
 
 export async function GET(
   request: NextRequest,
@@ -30,6 +31,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
+    const expenseKind = resolveExpenseKind(body.category, body.expenseKind);
 
     const expense = await prisma.expense.update({
       where: { id },
@@ -43,6 +45,7 @@ export async function PUT(
         reference: body.reference ?? undefined,
         notes: body.notes ?? undefined,
         status: body.status,
+        expenseKind,
       },
     });
 
@@ -52,7 +55,7 @@ export async function PUT(
       action: "UPDATE",
       entityType: "Expense",
       entityId: expense.id,
-      details: expense.expenseNumber,
+      details: `${expense.expenseNumber} · ${expenseKind}`,
     });
 
     return NextResponse.json(expense);

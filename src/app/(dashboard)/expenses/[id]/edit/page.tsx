@@ -20,6 +20,7 @@ const schema = z.object({
   paymentMethod: z.string(),
   reference: z.string(),
   status: z.enum(["PENDING", "PAID", "CANCELLED"]),
+  expenseKind: z.enum(["OPERATIONAL", "GROWTH"]),
   notes: z.string(),
 });
 
@@ -41,6 +42,7 @@ export default function EditExpensePage() {
       paymentMethod: "Cash",
       reference: "",
       status: "PAID",
+      expenseKind: "OPERATIONAL",
       notes: "",
     },
   });
@@ -60,6 +62,7 @@ export default function EditExpensePage() {
           paymentMethod: e.paymentMethod || "Cash",
           reference: e.reference || "",
           status: e.status,
+          expenseKind: e.expenseKind || "OPERATIONAL",
           notes: e.notes || "",
         });
       })
@@ -77,8 +80,9 @@ export default function EditExpensePage() {
       await api.put(`/expenses/${id}`, data);
       toast.success("Expense updated successfully");
       router.push("/expenses");
-    } catch {
-      toast.error("Failed to update expense");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      toast.error(error.response?.data?.error || "Failed to update expense");
     }
   };
 

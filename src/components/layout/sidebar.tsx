@@ -18,6 +18,7 @@ import {
   RefreshCw,
   History,
   Banknote,
+  PiggyBank,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -45,7 +46,10 @@ const navGroups = [
   },
   {
     label: "Finance",
-    items: [{ href: "/expenses", label: "Expenses", icon: Banknote }],
+    items: [
+      { href: "/expenses", label: "Expenses", icon: Banknote },
+      { href: "/profit-allocation", label: "Profit Allocation", icon: PiggyBank },
+    ],
   },
   {
     label: "Insights",

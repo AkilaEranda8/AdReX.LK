@@ -15,7 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatCurrency, cn } from "@/lib/utils";
-import { EXPENSE_CATEGORIES, EXPENSE_PAYMENT_METHODS } from "@/lib/expense-categories";
+import {
+  EXPENSE_PAYMENT_METHODS,
+  GROWTH_EXPENSE_CATEGORIES,
+  OPERATIONAL_EXPENSE_CATEGORIES,
+  resolveExpenseKind,
+  type ExpenseKind,
+} from "@/lib/expense-categories";
 
 export interface ExpenseFormData {
   expenseDate: string;
@@ -26,6 +32,7 @@ export interface ExpenseFormData {
   paymentMethod: string;
   reference: string;
   status: "PENDING" | "PAID" | "CANCELLED";
+  expenseKind: ExpenseKind;
   notes: string;
 }
 
@@ -54,6 +61,9 @@ export function CreateExpenseForm({
   const amount = watch("amount");
   const status = watch("status");
   const paymentMethod = watch("paymentMethod");
+  const expenseKind = watch("expenseKind") || "OPERATIONAL";
+  const categories =
+    expenseKind === "GROWTH" ? GROWTH_EXPENSE_CATEGORIES : OPERATIONAL_EXPENSE_CATEGORIES;
 
   const filledFields = [category, description, amount > 0].filter(Boolean).length;
 
@@ -130,14 +140,46 @@ export function CreateExpenseForm({
 
               <div className="space-y-2">
                 <Label>
+                  Type <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={expenseKind}
+                  onValueChange={(v) => {
+                    const kind = v as ExpenseKind;
+                    setValue("expenseKind", kind);
+                    const nextCats =
+                      kind === "GROWTH" ? GROWTH_EXPENSE_CATEGORIES : OPERATIONAL_EXPENSE_CATEGORIES;
+                    if (!(nextCats as readonly string[]).includes(category)) {
+                      setValue("category", nextCats[0]);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPERATIONAL">Operational (reduces profit)</SelectItem>
+                    <SelectItem value="GROWTH">Growth (from savings only)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
                   Category <span className="text-red-500">*</span>
                 </Label>
-                <Select value={category} onValueChange={(v) => setValue("category", v)}>
+                <Select
+                  value={category}
+                  onValueChange={(v) => {
+                    setValue("category", v);
+                    setValue("expenseKind", resolveExpenseKind(v, expenseKind));
+                  }}
+                >
                   <SelectTrigger className="rounded-lg">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {EXPENSE_CATEGORIES.map((cat) => (
+                    {categories.map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
                       </SelectItem>

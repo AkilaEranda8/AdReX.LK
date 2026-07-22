@@ -43,6 +43,11 @@ enum ExpenseStatus {
   CANCELLED
 }
 
+enum ExpenseKind {
+  OPERATIONAL
+  GROWTH
+}
+
 model User {
   id                 String               @id @default(cuid())
   email              String               @unique
@@ -211,9 +216,56 @@ model Expense {
   paymentMethod String?
   reference     String?
   status        ExpenseStatus @default(PAID)
+  expenseKind   ExpenseKind   @default(OPERATIONAL)
   notes         String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+model ProfitAllocation {
+  id                 String   @id @default(cuid())
+  allocationNumber   String   @unique
+  periodType         String
+  periodStart        DateTime
+  periodEnd          DateTime
+  totalIncome        Float
+  operationalExpenses Float
+  profit             Float
+  operatingPercent   Float
+  savingsPercent     Float
+  operatingAmount    Float
+  savingsAmount      Float
+  operatingBank      String?
+  savingsBank        String?
+  notes              String?
+  status             String   @default("COMPLETED")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model SavingsTransaction {
+  id            String   @id @default(cuid())
+  type          String
+  amount        Float
+  balanceAfter  Float
+  reference     String?
+  notes         String?
+  allocationId  String?
+  expenseId     String?
+  createdAt     DateTime @default(now())
+}
+
+model ProfitCalculationHistory {
+  id                    String   @id @default(cuid())
+  periodType            String
+  periodStart           DateTime
+  periodEnd             DateTime
+  totalIncome           Float
+  operationalExpenses   Float
+  profit                Float
+  allocated             Boolean  @default(false)
+  allocationId          String?
+  createdAt             DateTime @default(now())
 }
 
 model SequenceCounter {

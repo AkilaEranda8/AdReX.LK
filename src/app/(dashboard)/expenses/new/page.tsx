@@ -18,6 +18,7 @@ const schema = z.object({
   paymentMethod: z.string(),
   reference: z.string(),
   status: z.enum(["PENDING", "PAID", "CANCELLED"]),
+  expenseKind: z.enum(["OPERATIONAL", "GROWTH"]),
   notes: z.string(),
 });
 
@@ -39,6 +40,7 @@ export default function NewExpensePage() {
       paymentMethod: "Cash",
       reference: "",
       status: "PAID",
+      expenseKind: "OPERATIONAL",
       notes: "",
     },
   });
@@ -50,11 +52,19 @@ export default function NewExpensePage() {
     const data = form.getValues();
 
     try {
-      await api.post("/expenses", data);
-      toast.success("Expense recorded successfully");
+      const res = await api.post("/expenses", data);
+      if (data.expenseKind === "GROWTH") {
+        toast.success("Growth expense recorded from company savings");
+      } else {
+        toast.success("Expense recorded successfully");
+      }
+      if (res.data?.savingsBalance != null) {
+        toast(`Savings balance: Rs. ${Number(res.data.savingsBalance).toFixed(2)}`);
+      }
       router.push("/expenses");
-    } catch {
-      toast.error("Failed to save expense");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      toast.error(error.response?.data?.error || "Failed to save expense");
     }
   };
 
