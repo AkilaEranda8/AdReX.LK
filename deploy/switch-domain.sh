@@ -31,9 +31,8 @@ mkdir -p deploy/certbot/www deploy/certbot/conf
 
 echo "==> HTTP-only nginx for ACME challenge"
 cp deploy/nginx-http-only.conf deploy/nginx-standalone.conf
-docker compose -f docker-compose.standalone.yml up -d nginx
-docker compose -f docker-compose.standalone.yml exec -T nginx nginx -t
-docker compose -f docker-compose.standalone.yml exec -T nginx nginx -s reload
+docker compose -f docker-compose.standalone.yml up -d --force-recreate nginx
+sleep 2
 
 echo "==> Request Let's Encrypt certificate for ${DOMAIN}"
 certbot certonly --webroot \
@@ -69,12 +68,9 @@ server {
 OLDSSL
 fi
 
-docker compose -f docker-compose.standalone.yml exec -T nginx nginx -t
-docker compose -f docker-compose.standalone.yml exec -T nginx nginx -s reload
-
 echo "==> Rebuild app with new domain"
 docker compose -f docker-compose.standalone.yml build invoice-app
-docker compose -f docker-compose.standalone.yml up -d
+docker compose -f docker-compose.standalone.yml up -d --force-recreate
 
 sleep 4
 echo "==> Verify"
