@@ -43,7 +43,7 @@ export default function CreditsPage() {
       const res = await api.get("/credits");
       setCredits(res.data);
     } catch {
-      toast.error("Failed to load credits");
+      toast.error("Failed to load receivables");
     } finally {
       setLoading(false);
     }
@@ -82,8 +82,8 @@ export default function CreditsPage() {
       }))
     );
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Customer Credit");
-    XLSX.writeFile(wb, "customer-credits.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Receivables");
+    XLSX.writeFile(wb, "receivables.xlsx");
   };
 
   const clearFilters = () => {
@@ -98,8 +98,8 @@ export default function CreditsPage() {
     <div className="space-y-6 p-4 lg:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Customer Credit</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Track credit sales and record client payments</p>
+          <h1 className="text-2xl font-bold text-slate-900">Receivables</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Track outstanding balances and record client payments</p>
         </div>
         <Button variant="outline" className="gap-2 rounded-lg border-slate-200" onClick={handleExport}>
           <Download className="h-4 w-4" />

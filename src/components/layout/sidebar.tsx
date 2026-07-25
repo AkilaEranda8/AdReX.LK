@@ -20,6 +20,7 @@ import {
   Banknote,
   PiggyBank,
   Landmark,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -41,13 +42,14 @@ const navGroups = [
       { href: "/clients", label: "Clients", icon: Users },
       { href: "/invoices", label: "Invoices", icon: FileText },
       { href: "/quotations", label: "Quotations", icon: FileSpreadsheet },
-      { href: "/credits", label: "Customer Credit", icon: CreditCard },
       { href: "/recurring", label: "Recurring", icon: RefreshCw },
     ],
   },
   {
-    label: "Finance",
+    label: "Accounts",
     items: [
+      { href: "/credits", label: "Receivables", icon: CreditCard },
+      { href: "/payments", label: "Payments", icon: Wallet },
       { href: "/expenses", label: "Expenses", icon: Banknote },
       { href: "/banks", label: "Bank Accounts", icon: Landmark },
       { href: "/profit-allocation", label: "Profit Allocation", icon: PiggyBank },

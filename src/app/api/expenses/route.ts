@@ -4,10 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { generateExpenseNumber } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
 import { resolveExpenseKind } from "@/lib/expense-categories";
-import {
-  getSavingsBalance,
-  recordGrowthExpenseAgainstSavings,
-} from "@/lib/profit-allocation";
+import { getSavingsBalance } from "@/lib/profit-allocation";
+import { money, postGrowthSavingsOut } from "@/lib/accounts";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -57,11 +55,12 @@ export async function POST(request: NextRequest) {
 
     const expenseKind = resolveExpenseKind(category, body.expenseKind);
     const expenseStatus = status || "PAID";
+    const expenseAmount = money(amount);
     const expenseNumber = await generateExpenseNumber();
 
     if (expenseKind === "GROWTH" && expenseStatus === "PAID") {
       const balance = await getSavingsBalance();
-      if (amount > balance) {
+      if (expenseAmount > balance) {
         return NextResponse.json(
           {
             error: `Insufficient savings balance. Available: Rs. ${balance.toFixed(2)}. Growth expenses must be paid from company savings.`,
@@ -71,33 +70,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const expense = await prisma.expense.create({
-      data: {
-        expenseNumber,
-        expenseDate: expenseDate ? new Date(expenseDate) : new Date(),
-        category,
-        vendor: vendor || null,
-        description,
-        amount,
-        paymentMethod: paymentMethod || null,
-        reference: reference || null,
-        notes: notes || null,
-        status: expenseStatus,
-        expenseKind,
-      },
-    });
-
-    let savingsBalance: number | undefined;
-    if (expenseKind === "GROWTH" && expense.status === "PAID") {
-      const result = await recordGrowthExpenseAgainstSavings({
-        expenseId: expense.id,
-        amount: expense.amount,
-        expenseNumber: expense.expenseNumber,
-        userId: auth.session.userId,
-        userName: auth.session.name,
+    const { expense, savingsBalance } = await prisma.$transaction(async (tx) => {
+      const created = await tx.expense.create({
+        data: {
+          expenseNumber,
+          expenseDate: expenseDate ? new Date(expenseDate) : new Date(),
+          category,
+          vendor: vendor || null,
+          description,
+          amount: expenseAmount,
+          paymentMethod: paymentMethod || null,
+          reference: reference || null,
+          notes: notes || null,
+          status: expenseStatus,
+          expenseKind,
+        },
       });
-      savingsBalance = result.savingsBalance;
-    }
+
+      let balanceAfter: number | undefined;
+      if (expenseKind === "GROWTH" && created.status === "PAID") {
+        const sav = await postGrowthSavingsOut({
+          tx,
+          expenseId: created.id,
+          expenseNumber: created.expenseNumber,
+          amount: created.amount,
+        });
+        balanceAfter = sav.balanceAfter;
+      }
+
+      return { expense: created, savingsBalance: balanceAfter };
+    });
 
     await logAudit({
       userId: auth.session.userId,
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
       action: "CREATE",
       entityType: "Expense",
       entityId: expense.id,
-      details: `${expenseNumber} · ${expenseKind} · Rs. ${amount}`,
+      details: `${expenseNumber} · ${expenseKind} · Rs. ${expenseAmount}`,
     });
 
     return NextResponse.json({ ...expense, savingsBalance }, { status: 201 });

@@ -3,6 +3,11 @@ import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { resolveExpenseKind } from "@/lib/expense-categories";
+import {
+  money,
+  postGrowthSavingsOut,
+  reverseGrowthSavingsIfNeeded,
+} from "@/lib/accounts";
 
 export async function GET(
   request: NextRequest,
@@ -31,22 +36,53 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const expenseKind = resolveExpenseKind(body.category, body.expenseKind);
+    const existing = await prisma.expense.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Expense not found" }, { status: 404 });
+    }
 
-    const expense = await prisma.expense.update({
-      where: { id },
-      data: {
-        expenseDate: body.expenseDate ? new Date(body.expenseDate) : undefined,
-        category: body.category,
-        vendor: body.vendor ?? undefined,
-        description: body.description,
-        amount: body.amount,
-        paymentMethod: body.paymentMethod ?? undefined,
-        reference: body.reference ?? undefined,
-        notes: body.notes ?? undefined,
-        status: body.status,
-        expenseKind,
-      },
+    const expenseKind = resolveExpenseKind(body.category, body.expenseKind);
+    const nextStatus = (body.status || existing.status) as "PENDING" | "PAID" | "CANCELLED";
+    const nextAmount = money(body.amount ?? existing.amount);
+
+    const expense = await prisma.$transaction(async (tx) => {
+      const wasGrowthPaid =
+        existing.expenseKind === "GROWTH" && existing.status === "PAID";
+      const willBeGrowthPaid = expenseKind === "GROWTH" && nextStatus === "PAID";
+
+      if (wasGrowthPaid && (!willBeGrowthPaid || nextAmount !== money(existing.amount))) {
+        await reverseGrowthSavingsIfNeeded({
+          tx,
+          expenseId: existing.id,
+          expenseNumber: existing.expenseNumber,
+          amount: existing.amount,
+        });
+      }
+
+      if (willBeGrowthPaid && (!wasGrowthPaid || nextAmount !== money(existing.amount))) {
+        await postGrowthSavingsOut({
+          tx,
+          expenseId: existing.id,
+          expenseNumber: existing.expenseNumber,
+          amount: nextAmount,
+        });
+      }
+
+      return tx.expense.update({
+        where: { id },
+        data: {
+          expenseDate: body.expenseDate ? new Date(body.expenseDate) : undefined,
+          category: body.category,
+          vendor: body.vendor ?? undefined,
+          description: body.description,
+          amount: nextAmount,
+          paymentMethod: body.paymentMethod ?? undefined,
+          reference: body.reference ?? undefined,
+          notes: body.notes ?? undefined,
+          status: nextStatus,
+          expenseKind,
+        },
+      });
     });
 
     await logAudit({
@@ -59,8 +95,9 @@ export async function PUT(
     });
 
     return NextResponse.json(expense);
-  } catch {
-    return NextResponse.json({ error: "Failed to update expense" }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update expense";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
@@ -73,7 +110,22 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const expense = await prisma.expense.delete({ where: { id } });
+    const existing = await prisma.expense.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Expense not found" }, { status: 404 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (existing.expenseKind === "GROWTH" && existing.status === "PAID") {
+        await reverseGrowthSavingsIfNeeded({
+          tx,
+          expenseId: existing.id,
+          expenseNumber: existing.expenseNumber,
+          amount: existing.amount,
+        });
+      }
+      await tx.expense.delete({ where: { id } });
+    });
 
     await logAudit({
       userId: auth.session.userId,
@@ -81,11 +133,12 @@ export async function DELETE(
       action: "DELETE",
       entityType: "Expense",
       entityId: id,
-      details: expense.expenseNumber,
+      details: existing.expenseNumber,
     });
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to delete expense" }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to delete expense";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

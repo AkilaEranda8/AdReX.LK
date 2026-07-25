@@ -9,6 +9,11 @@ import {
 } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
 import { sendInvoiceCreatedSms, sendInvoiceAdvancePaymentSms } from "@/lib/sms";
+import {
+  ensureAdvancePaymentRow,
+  money,
+  syncClientCreditBalance,
+} from "@/lib/accounts";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
       total: calculateItemTotal(item.price, item.quantity),
     }));
 
-    const advancePayment = body.advancePayment || 0;
+    const advancePayment = money(body.advancePayment || 0);
     const { subTotal, grandTotal, remainingBalance } = calculateInvoiceTotals(
       items,
       body.discount || 0,
@@ -87,11 +92,18 @@ export async function POST(request: NextRequest) {
         include: { client: true, items: true },
       });
 
-      if (!isDraft && remainingBalance > 0) {
-        await tx.client.update({
-          where: { id: body.clientId },
-          data: { creditBalance: { increment: remainingBalance } },
+      if (!isDraft && advancePayment > 0) {
+        await ensureAdvancePaymentRow({
+          tx,
+          clientId: body.clientId,
+          invoiceId: inv.id,
+          amount: advancePayment,
+          paymentDate: new Date(body.invoiceDate),
         });
+      }
+
+      if (!isDraft) {
+        await syncClientCreditBalance(body.clientId, tx);
       }
 
       return inv;
@@ -137,7 +149,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ ...invoice, sms, paymentSms }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to create invoice";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

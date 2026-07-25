@@ -48,7 +48,9 @@ function getPageTitle(pathname: string): string {
   if (pathname === "/quotations/new") return "Create Quotation";
   if (pathname.match(/^\/quotations\/[^/]+\/edit$/)) return "Edit Quotation";
   if (pathname.match(/^\/quotations\/[^/]+$/)) return "View Quotation";
-  if (pathname === "/credits") return "Customer Credit";
+  if (pathname === "/credits") return "Receivables";
+  if (pathname.startsWith("/credits/")) return "Receivables";
+  if (pathname === "/payments") return "Payments";
   if (pathname === "/expenses") return "Expenses";
   if (pathname === "/expenses/new") return "Record Expense";
   if (pathname.match(/^\/expenses\/[^/]+\/edit$/)) return "Edit Expense";

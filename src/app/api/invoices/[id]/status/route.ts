@@ -3,10 +3,14 @@ import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import {
-  getCreditDiffForWorkflowChange,
   resolveManualInvoiceWorkflow,
   type InvoiceWorkflowStatus,
 } from "@/lib/invoice-status";
+import {
+  getInvoiceCashApplied,
+  money,
+  syncClientCreditBalance,
+} from "@/lib/accounts";
 
 const VALID: InvoiceWorkflowStatus[] = ["DRAFT", "PENDING", "COMPLETED", "CANCELLED"];
 
@@ -31,11 +35,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    const paymentsSum = await prisma.payment.aggregate({
-      where: { invoiceId: id },
-      _sum: { amount: true },
-    });
-    const paidTotal = paymentsSum._sum.amount || 0;
+    const cash = await getInvoiceCashApplied(existing);
+    const paidTotal = cash.paymentsSum;
 
     const resolved = resolveManualInvoiceWorkflow(
       invoiceStatus,
@@ -45,33 +46,41 @@ export async function PATCH(
         remainingBalance: existing.remainingBalance,
         invoiceStatus: existing.invoiceStatus,
       },
-      paidTotal
+      // When advance is already a Payment row, don't subtract advance again
+      cash.legacyAdvance > 0 ? paidTotal : money(paidTotal)
     );
 
-    const creditDiff = getCreditDiffForWorkflowChange(
-      existing,
-      resolved.remainingBalance,
-      invoiceStatus
-    );
+    // Prefer cash-applied remaining for non-draft/cancel
+    let remainingBalance = resolved.remainingBalance;
+    if (invoiceStatus !== "DRAFT" && invoiceStatus !== "CANCELLED") {
+      remainingBalance = Math.max(0, money(existing.grandTotal - cash.cashApplied));
+      if (invoiceStatus === "COMPLETED" && remainingBalance > 0) {
+        // Completing with balance still open — keep computed remaining
+      }
+    }
+
+    const paymentStatus =
+      invoiceStatus === "DRAFT" || invoiceStatus === "CANCELLED"
+        ? resolved.paymentStatus
+        : remainingBalance <= 0
+          ? "PAID"
+          : remainingBalance < existing.grandTotal
+            ? "PARTIALLY_PAID"
+            : "UNPAID";
 
     const invoice = await prisma.$transaction(async (tx) => {
       const inv = await tx.invoice.update({
         where: { id },
         data: {
           invoiceStatus: resolved.invoiceStatus,
-          paymentStatus: resolved.paymentStatus,
-          remainingBalance: resolved.remainingBalance,
+          paymentStatus,
+          remainingBalance:
+            invoiceStatus === "DRAFT" || invoiceStatus === "CANCELLED" ? 0 : remainingBalance,
         },
         include: { client: true, items: true, payments: true },
       });
 
-      if (creditDiff !== 0) {
-        await tx.client.update({
-          where: { id: existing.clientId },
-          data: { creditBalance: { increment: creditDiff } },
-        });
-      }
-
+      await syncClientCreditBalance(existing.clientId, tx);
       return inv;
     });
 
@@ -85,7 +94,8 @@ export async function PATCH(
     });
 
     return NextResponse.json(invoice);
-  } catch {
-    return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update status";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

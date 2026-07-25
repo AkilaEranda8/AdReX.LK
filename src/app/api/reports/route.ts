@@ -34,6 +34,7 @@ function buildSalesTrend(
           const d = new Date(inv.invoiceDate);
           return (
             inv.invoiceStatus !== "DRAFT" &&
+            inv.invoiceStatus !== "CANCELLED" &&
             d.getFullYear() === now.getFullYear() &&
             d.getMonth() === now.getMonth() &&
             d.getDate() === day
@@ -68,7 +69,12 @@ function buildSalesTrend(
       const sales = invoices
         .filter((inv) => {
           const invDate = new Date(inv.invoiceDate);
-          return inv.invoiceStatus !== "DRAFT" && invDate.getFullYear() === year && invDate.getMonth() === month;
+          return (
+            inv.invoiceStatus !== "DRAFT" &&
+            inv.invoiceStatus !== "CANCELLED" &&
+            invDate.getFullYear() === year &&
+            invDate.getMonth() === month
+          );
         })
         .reduce((s, inv) => s + inv.grandTotal, 0);
 
@@ -103,7 +109,12 @@ function buildSalesTrend(
     const sales = invoices
       .filter((inv) => {
         const d = new Date(inv.invoiceDate);
-        return inv.invoiceStatus !== "DRAFT" && d.getFullYear() === year && d.getMonth() === month;
+        return (
+          inv.invoiceStatus !== "DRAFT" &&
+          inv.invoiceStatus !== "CANCELLED" &&
+          d.getFullYear() === year &&
+          d.getMonth() === month
+        );
       })
       .reduce((s, inv) => s + inv.grandTotal, 0);
 
@@ -144,11 +155,14 @@ export async function GET(request: NextRequest) {
   ]);
 
   const periodInvoices = invoices.filter(
-    (i) => inPeriod(new Date(i.invoiceDate), period, now) && i.invoiceStatus !== "DRAFT"
+    (i) =>
+      inPeriod(new Date(i.invoiceDate), period, now) &&
+      i.invoiceStatus !== "DRAFT" &&
+      i.invoiceStatus !== "CANCELLED"
   );
   const periodPayments = payments.filter((p) => inPeriod(new Date(p.paymentDate), period, now));
   const periodExpenses = expenses.filter(
-    (e) => inPeriod(new Date(e.expenseDate), period, now) && e.status !== "CANCELLED"
+    (e) => inPeriod(new Date(e.expenseDate), period, now) && e.status === "PAID"
   );
   const operationalExpenses = periodExpenses.filter(
     (e) => (e as { expenseKind?: string }).expenseKind !== "GROWTH"
@@ -169,7 +183,12 @@ export async function GET(request: NextRequest) {
       new Date(i.dueDate) < now
   );
 
-  const scopedInvoices = invoices.filter((i) => inPeriod(new Date(i.invoiceDate), period, now));
+  const scopedInvoices = invoices.filter(
+    (i) =>
+      inPeriod(new Date(i.invoiceDate), period, now) &&
+      i.invoiceStatus !== "DRAFT" &&
+      i.invoiceStatus !== "CANCELLED"
+  );
 
   const invoiceStatus = {
     paid: scopedInvoices.filter((i) => i.paymentStatus === "PAID").length,
@@ -219,6 +238,9 @@ export async function GET(request: NextRequest) {
       netProfit,
       overdueCount: overdueInvoices.length,
       overdueAmount: overdueInvoices.reduce((s, i) => s + i.remainingBalance, 0),
+      // Clarifies report basis for the UI
+      salesBasis: "invoiced",
+      expenseBasis: "paid_operational",
     },
     charts,
     overdueInvoices: overdueInvoices.map((i) => ({

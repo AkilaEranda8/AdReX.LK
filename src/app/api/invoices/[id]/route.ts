@@ -8,6 +8,13 @@ import {
 } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
 import { sendInvoiceCreatedSms, sendPaymentReceivedSms } from "@/lib/sms";
+import {
+  computeRemaining,
+  ensureAdvancePaymentRow,
+  getInvoiceCashApplied,
+  money,
+  syncClientCreditBalance,
+} from "@/lib/accounts";
 
 export async function GET(
   request: NextRequest,
@@ -54,11 +61,16 @@ export async function PUT(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    if (existing.invoiceStatus === "CANCELLED" && isDraft) {
+      return NextResponse.json({ error: "Cancelled invoices cannot become drafts" }, { status: 400 });
+    }
+
     const wasDraft = existing.invoiceStatus === "DRAFT";
-    const newAdvance = body.advancePayment || 0;
-    // Draft advances are stored for editing but not applied to AR until publish
-    const previousAdvance = wasDraft ? 0 : existing.advancePayment;
-    const advanceDelta = isDraft ? 0 : Math.round((newAdvance - previousAdvance) * 100) / 100;
+    const newAdvance = money(body.advancePayment || 0);
+    const previousAdvance = wasDraft ? 0 : money(existing.advancePayment);
+    const advanceDelta = isDraft ? 0 : money(newAdvance - previousAdvance);
+    const oldClientId = existing.clientId;
+    const newClientId = body.clientId || existing.clientId;
 
     const items = body.items.map((item: { itemName: string; price: number; quantity: number }) => ({
       itemName: item.itemName,
@@ -73,30 +85,47 @@ export async function PUT(
       newAdvance
     );
 
-    const totalPayments = await prisma.payment.aggregate({
-      where: { invoiceId: id },
-      _sum: { amount: true },
-    });
-    const paymentsSum = totalPayments._sum.amount || 0;
-    const newRemaining = isDraft
-      ? 0
-      : Math.round((grandTotal - newAdvance - paymentsSum) * 100) / 100;
-    const { invoiceStatus, paymentStatus } = syncInvoiceStatuses(
-      newRemaining,
-      grandTotal,
-      isDraft,
-      existing.invoiceStatus
-    );
-
     const invoice = await prisma.$transaction(async (tx) => {
-      const creditDiff = isDraft ? 0 : newRemaining - (wasDraft ? 0 : existing.remainingBalance);
-
       await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
+
+      // Temporarily set advance on invoice for cash-applied helper after payment upsert
+      if (!isDraft && newAdvance > 0) {
+        await ensureAdvancePaymentRow({
+          tx,
+          clientId: newClientId,
+          invoiceId: id,
+          amount: newAdvance,
+          paymentDate: new Date(body.invoiceDate || existing.invoiceDate),
+        });
+      } else if (!isDraft && newAdvance <= 0) {
+        // Remove legacy advance payment rows if advance cleared
+        await tx.payment.deleteMany({
+          where: {
+            invoiceId: id,
+            OR: [
+              { paymentMethod: "Advance" },
+              { note: { contains: "Advance payment" } },
+            ],
+          },
+        });
+      }
+
+      const cash = isDraft
+        ? { cashApplied: 0 }
+        : await getInvoiceCashApplied({ id, advancePayment: newAdvance }, tx);
+
+      const newRemaining = isDraft ? 0 : computeRemaining(grandTotal, cash.cashApplied);
+      const { invoiceStatus, paymentStatus } = syncInvoiceStatuses(
+        newRemaining,
+        grandTotal,
+        isDraft,
+        existing.invoiceStatus === "CANCELLED" ? "CANCELLED" : existing.invoiceStatus
+      );
 
       const inv = await tx.invoice.update({
         where: { id },
         data: {
-          clientId: body.clientId,
+          clientId: newClientId,
           invoiceDate: new Date(body.invoiceDate),
           dueDate: body.dueDate ? new Date(body.dueDate) : null,
           reference: body.reference || null,
@@ -114,12 +143,15 @@ export async function PUT(
         include: { client: true, items: true },
       });
 
-      if (creditDiff !== 0) {
-        await tx.client.update({
-          where: { id: body.clientId },
-          data: { creditBalance: { increment: creditDiff } },
+      // Move payment rows if client changed
+      if (oldClientId !== newClientId) {
+        await tx.payment.updateMany({
+          where: { invoiceId: id },
+          data: { clientId: newClientId },
         });
+        await syncClientCreditBalance(oldClientId, tx);
       }
+      await syncClientCreditBalance(newClientId, tx);
 
       return inv;
     });
@@ -170,8 +202,9 @@ export async function PUT(
     }
 
     return NextResponse.json({ ...invoice, sms, paymentSms });
-  } catch {
-    return NextResponse.json({ error: "Failed to update invoice" }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to update invoice";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -190,13 +223,9 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
-      if (invoice.remainingBalance > 0 && invoice.invoiceStatus !== "DRAFT") {
-        await tx.client.update({
-          where: { id: invoice.clientId },
-          data: { creditBalance: { decrement: invoice.remainingBalance } },
-        });
-      }
+      await tx.payment.deleteMany({ where: { invoiceId: id } });
       await tx.invoice.delete({ where: { id } });
+      await syncClientCreditBalance(invoice.clientId, tx);
     });
 
     await logAudit({

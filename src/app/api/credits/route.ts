@@ -1,35 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
-import { syncInvoiceStatuses } from "@/lib/numbering";
 import { logAudit } from "@/lib/audit";
 import { sendPaymentReceivedSms } from "@/lib/sms";
+import { money, recordCustomerPayment, syncClientCreditBalance } from "@/lib/accounts";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
   const clients = await prisma.client.findMany({
-    where: { creditBalance: { gt: 0 } },
+    where: {
+      OR: [
+        { creditBalance: { gt: 0 } },
+        { invoices: { some: { remainingBalance: { gt: 0 }, invoiceStatus: { notIn: ["DRAFT", "CANCELLED"] } } } },
+      ],
+    },
     include: {
       invoices: {
-        where: { remainingBalance: { gt: 0 } },
-        orderBy: { createdAt: "desc" },
+        where: {
+          remainingBalance: { gt: 0 },
+          invoiceStatus: { notIn: ["DRAFT", "CANCELLED"] },
+        },
+        orderBy: { invoiceDate: "asc" },
       },
-      payments: { orderBy: { createdAt: "desc" }, take: 10 },
+      payments: { orderBy: { paymentDate: "desc" }, take: 10 },
     },
     orderBy: { name: "asc" },
   });
 
+  // Keep denormalized AR in sync when listing receivables
+  for (const client of clients) {
+    const outstanding = money(
+      client.invoices.reduce((sum, inv) => sum + inv.remainingBalance, 0)
+    );
+    if (money(client.creditBalance) !== outstanding) {
+      await syncClientCreditBalance(client.id);
+      client.creditBalance = outstanding;
+    }
+  }
+
   const credits = clients.map((client) => {
-    const totalInvoiced = client.invoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
-    const outstanding = client.creditBalance;
-    const paidAmount = totalInvoiced - outstanding;
+    const outstanding = money(client.creditBalance);
+    const openInvoiced = money(client.invoices.reduce((sum, inv) => sum + inv.grandTotal, 0));
+    const paidOnOpen = money(openInvoiced - outstanding);
 
     return {
       ...client,
-      totalCredit: totalInvoiced,
-      paidAmount: Math.max(0, paidAmount),
+      totalCredit: openInvoiced,
+      paidAmount: Math.max(0, paidOnOpen),
       outstandingBalance: outstanding,
     };
   });
@@ -43,75 +62,26 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { clientId, invoiceId, amount, note } = body;
+    const { clientId, invoiceId, note } = body;
+    const amount = money(body.amount);
 
-    if (!clientId || !amount || amount <= 0) {
+    if (!clientId || amount <= 0) {
       return NextResponse.json({ error: "Invalid payment data" }, { status: 400 });
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.create({
-        data: {
-          clientId,
-          invoiceId: invoiceId || null,
-          amount,
-          paymentMethod: body.paymentMethod || null,
-          note,
-        },
+      return recordCustomerPayment({
+        tx,
+        clientId,
+        amount,
+        invoiceId: invoiceId || null,
+        paymentMethod: body.paymentMethod || null,
+        note: note || null,
+        paymentDate: body.paymentDate ? new Date(body.paymentDate) : new Date(),
       });
-
-      await tx.client.update({
-        where: { id: clientId },
-        data: { creditBalance: { decrement: amount } },
-      });
-
-      if (invoiceId) {
-        const invoice = await tx.invoice.findUnique({ where: { id: invoiceId } });
-        if (invoice) {
-          const newRemaining = Math.round((invoice.remainingBalance - amount) * 100) / 100;
-          const { invoiceStatus, paymentStatus } = syncInvoiceStatuses(
-            Math.max(0, newRemaining),
-            invoice.grandTotal,
-            false,
-            invoice.invoiceStatus
-          );
-          await tx.invoice.update({
-            where: { id: invoiceId },
-            data: {
-              remainingBalance: Math.max(0, newRemaining),
-              invoiceStatus,
-              paymentStatus,
-            },
-          });
-        }
-      } else {
-        let remaining = amount;
-        const unpaidInvoices = await tx.invoice.findMany({
-          where: { clientId, remainingBalance: { gt: 0 } },
-          orderBy: { createdAt: "asc" },
-        });
-
-        for (const invoice of unpaidInvoices) {
-          if (remaining <= 0) break;
-          const payAmount = Math.min(remaining, invoice.remainingBalance);
-          const newRemaining = Math.round((invoice.remainingBalance - payAmount) * 100) / 100;
-          const { invoiceStatus, paymentStatus } = syncInvoiceStatuses(
-            newRemaining,
-            invoice.grandTotal,
-            false,
-            invoice.invoiceStatus
-          );
-          await tx.invoice.update({
-            where: { id: invoice.id },
-            data: { remainingBalance: newRemaining, invoiceStatus, paymentStatus },
-          });
-          remaining -= payAmount;
-        }
-      }
-
-      return payment;
     });
 
+    const primary = result.payments[0];
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       select: { name: true, contactNumber: true, creditBalance: true },
@@ -143,7 +113,7 @@ export async function POST(request: NextRequest) {
           userName: auth.session.name,
           action: sms.sent ? "SMS_SENT" : "SMS_FAILED",
           entityType: "Payment",
-          entityId: result.id,
+          entityId: primary?.id,
           details: sms.message,
         });
       }
@@ -154,12 +124,22 @@ export async function POST(request: NextRequest) {
       userName: auth.session.name,
       action: "CREATE",
       entityType: "Payment",
-      entityId: result.id,
-      details: `Rs. ${amount}`,
+      entityId: primary?.id,
+      details: `Rs. ${amount}${result.payments.length > 1 ? ` · split across ${result.payments.length} invoices` : ""}`,
     });
 
-    return NextResponse.json({ ...result, sms }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Failed to record payment" }, { status: 500 });
+    return NextResponse.json(
+      {
+        id: primary?.id,
+        amount,
+        payments: result.payments,
+        outstanding: result.outstanding,
+        sms,
+      },
+      { status: 201 }
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to record payment";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

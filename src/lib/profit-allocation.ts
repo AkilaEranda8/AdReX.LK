@@ -64,7 +64,7 @@ export async function calculateProfitSummary(period: PeriodType) {
     prisma.expense.findMany({
       where: {
         expenseDate: { gte: start, lte: end },
-        status: { not: "CANCELLED" },
+        status: "PAID",
       },
     }),
     prisma.profitAllocation.findMany({

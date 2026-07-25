@@ -65,14 +65,28 @@ export async function GET(request: NextRequest) {
     prisma.payment.aggregate({ _sum: { amount: true } }),
   ]);
 
-  const totalSales = allInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
+  const totalSales = allInvoices
+    .filter((inv) => inv.invoiceStatus !== "DRAFT" && inv.invoiceStatus !== "CANCELLED")
+    .reduce((sum, inv) => sum + inv.grandTotal, 0);
   const salesThisMonth = allInvoices
-    .filter((inv) => new Date(inv.createdAt) >= thisMonthStart)
+    .filter((inv) => {
+      const d = new Date(inv.createdAt);
+      return (
+        d >= thisMonthStart &&
+        inv.invoiceStatus !== "DRAFT" &&
+        inv.invoiceStatus !== "CANCELLED"
+      );
+    })
     .reduce((sum, inv) => sum + inv.grandTotal, 0);
   const salesLastMonth = allInvoices
     .filter((inv) => {
       const d = new Date(inv.createdAt);
-      return d >= lastMonthStart && d <= lastMonthEnd;
+      return (
+        d >= lastMonthStart &&
+        d <= lastMonthEnd &&
+        inv.invoiceStatus !== "DRAFT" &&
+        inv.invoiceStatus !== "CANCELLED"
+      );
     })
     .reduce((sum, inv) => sum + inv.grandTotal, 0);
 
@@ -114,6 +128,8 @@ export async function GET(request: NextRequest) {
       .filter((inv) => {
         const d = new Date(inv.invoiceDate);
         return (
+          inv.invoiceStatus !== "DRAFT" &&
+          inv.invoiceStatus !== "CANCELLED" &&
           d.getFullYear() === date.getFullYear() &&
           d.getMonth() === date.getMonth() &&
           d.getDate() === day
@@ -126,6 +142,8 @@ export async function GET(request: NextRequest) {
         const d = new Date(inv.invoiceDate);
         const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, day);
         return (
+          inv.invoiceStatus !== "DRAFT" &&
+          inv.invoiceStatus !== "CANCELLED" &&
           d.getFullYear() === lastDate.getFullYear() &&
           d.getMonth() === lastDate.getMonth() &&
           d.getDate() === day
