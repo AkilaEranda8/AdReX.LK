@@ -324,9 +324,10 @@ export default function ProfitAllocationPage() {
             <CardTitle className="text-base font-semibold">Flow</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>1. Income (sales invoices) − Operational expenses = <strong className="text-foreground">Profit</strong></p>
-            <p>2. Allocate profit → {summary.settings.operatingPercent}% Operating bank, {summary.settings.savingsPercent}% Savings bank</p>
-            <p>3. Growth expenses (marketing, R&amp;D, expansion) pay from <strong className="text-foreground">Savings only</strong> — they do not reduce profit</p>
+            <p>1. Invoiced income − Outstanding (not collected) = <strong className="text-foreground">Collected income</strong></p>
+            <p>2. Collected income − Operational expenses = <strong className="text-foreground">Profit</strong></p>
+            <p>3. Allocate profit → {summary.settings.operatingPercent}% Operating bank, {summary.settings.savingsPercent}% Savings bank</p>
+            <p>4. Growth expenses (marketing, R&amp;D, expansion) pay from <strong className="text-foreground">Savings only</strong> — they do not reduce profit</p>
           </CardContent>
         </Card>
       </div>
