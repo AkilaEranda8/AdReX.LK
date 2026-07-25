@@ -59,7 +59,7 @@ export async function calculateProfitSummary(period: PeriodType) {
         invoiceDate: { gte: start, lte: end },
         invoiceStatus: { notIn: ["DRAFT", "CANCELLED"] },
       },
-      select: { grandTotal: true },
+      select: { grandTotal: true, remainingBalance: true },
     }),
     prisma.expense.findMany({
       where: {
@@ -76,7 +76,12 @@ export async function calculateProfitSummary(period: PeriodType) {
     }),
   ]);
 
-  const totalIncome = invoices.reduce((s, i) => s + i.grandTotal, 0);
+  // Gross invoiced (accrual) vs outstanding not yet collected.
+  const invoicedIncome = Math.round(invoices.reduce((s, i) => s + i.grandTotal, 0) * 100) / 100;
+  const outstanding =
+    Math.round(invoices.reduce((s, i) => s + Math.max(0, i.remainingBalance), 0) * 100) / 100;
+  // Only collected cash counts toward allocatable income.
+  const totalIncome = Math.round((invoicedIncome - outstanding) * 100) / 100;
   const operationalExpenses = expenses
     .filter((e) => e.expenseKind === "OPERATIONAL")
     .reduce((s, e) => s + e.amount, 0);
@@ -99,6 +104,8 @@ export async function calculateProfitSummary(period: PeriodType) {
     periodStart: start,
     periodEnd: end,
     totalIncome,
+    invoicedIncome,
+    outstanding,
     operationalExpenses,
     growthExpenses,
     profit,

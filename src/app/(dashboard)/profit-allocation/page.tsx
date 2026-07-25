@@ -41,6 +41,8 @@ type TabKey = "allocations" | "growth" | "savings" | "history";
 interface Summary {
   period: PeriodType;
   totalIncome: number;
+  invoicedIncome: number;
+  outstanding: number;
   operationalExpenses: number;
   growthExpenses: number;
   profit: number;
@@ -206,7 +208,9 @@ export default function ProfitAllocationPage() {
   if (loading || !summary) return <PageLoader />;
 
   const cards = [
-    { label: "Total Income", value: summary.totalIncome, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Invoiced Income", value: summary.invoicedIncome, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Outstanding (not collected)", value: summary.outstanding, icon: Wallet, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Collected Income", value: summary.totalIncome, icon: CircleDollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Operational Expenses", value: summary.operationalExpenses, icon: Wallet, color: "text-orange-600", bg: "bg-orange-50" },
     { label: "Profit", value: summary.profit, icon: CircleDollarSign, color: "text-indigo-600", bg: "bg-indigo-50" },
     { label: "→ Operating Bank", value: summary.allocatedOperating, icon: Landmark, color: "text-blue-600", bg: "bg-blue-50" },
@@ -227,7 +231,7 @@ export default function ProfitAllocationPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Profit Allocation</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Profit = Income − Operational expenses. Growth spending comes from company savings only.
+            Profit = Collected income (invoiced − outstanding) − Operational expenses. Growth spending comes from company savings only.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
