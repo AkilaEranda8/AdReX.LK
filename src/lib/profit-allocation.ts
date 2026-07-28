@@ -106,9 +106,16 @@ export async function calculateProfitSummary(period: PeriodType) {
   const availableProfit = Math.round(Math.max(0, profit - alreadyAllocated) * 100) / 100;
   const savingsBalance = await getSavingsBalance();
 
+  // Suggested Split always mirrors live gross profit (so amounts never go blank at 0 when over-allocated).
+  const basisProfit = Math.max(0, profit);
   const suggestedOperating =
-    Math.round(((availableProfit * pa.operatingPercent) / 100) * 100) / 100;
+    Math.round(((basisProfit * pa.operatingPercent) / 100) * 100) / 100;
   const suggestedSavings =
+    Math.round(((basisProfit * pa.savingsPercent) / 100) * 100) / 100;
+  // What the next "Allocate Available" click would post.
+  const nextOperating =
+    Math.round(((availableProfit * pa.operatingPercent) / 100) * 100) / 100;
+  const nextSavings =
     Math.round(((availableProfit * pa.savingsPercent) / 100) * 100) / 100;
 
   return {
@@ -129,10 +136,14 @@ export async function calculateProfitSummary(period: PeriodType) {
     lowSavings: savingsBalance < pa.lowSavingsWarning,
     settings: pa,
     suggested: {
-      operatingAmount: Math.max(0, suggestedOperating),
-      savingsAmount: Math.max(0, suggestedSavings),
+      operatingAmount: suggestedOperating,
+      savingsAmount: suggestedSavings,
       operatingPercent: pa.operatingPercent,
       savingsPercent: pa.savingsPercent,
+    },
+    nextAllocate: {
+      operatingAmount: nextOperating,
+      savingsAmount: nextSavings,
     },
   };
 }
@@ -165,8 +176,8 @@ export async function allocateProfit(params: {
   }
 
   // Incremental allocate: more than one COMPLETED row per period is OK when new cash arrives.
-  const operatingAmount = summary.suggested.operatingAmount;
-  const savingsAmount = summary.suggested.savingsAmount;
+  const operatingAmount = summary.nextAllocate.operatingAmount;
+  const savingsAmount = summary.nextAllocate.savingsAmount;
   const allocationProfit = summary.availableProfit;
   const allocationNumber = await generateAllocationNumber();
   const currentBalance = await getSavingsBalance();

@@ -59,6 +59,10 @@ interface Summary {
     operatingPercent: number;
     savingsPercent: number;
   };
+  nextAllocate: {
+    operatingAmount: number;
+    savingsAmount: number;
+  };
 }
 
 interface AllocationRow {
@@ -311,9 +315,9 @@ export default function ProfitAllocationPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Available profit</span>
+              <span className="text-muted-foreground">Gross profit (live)</span>
               <span className="font-semibold text-indigo-600">
-                {formatCurrency(summary.availableProfit)}
+                {formatCurrency(summary.profit)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -331,6 +335,14 @@ export default function ProfitAllocationPage() {
               <span className="font-semibold text-violet-600">
                 {formatCurrency(summary.suggested.savingsAmount)}
               </span>
+            </div>
+            <div className="flex justify-between border-t pt-3 text-muted-foreground">
+              <span>Already allocated</span>
+              <span className="font-medium text-foreground">{formatCurrency(summary.alreadyAllocated)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Still available to allocate</span>
+              <span className="font-medium text-foreground">{formatCurrency(summary.availableProfit)}</span>
             </div>
             <div className="flex justify-between border-t pt-3">
               <span className="font-medium">Growth spent (period)</span>
