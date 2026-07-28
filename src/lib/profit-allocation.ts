@@ -82,22 +82,34 @@ export async function calculateProfitSummary(period: PeriodType) {
     Math.round(invoices.reduce((s, i) => s + Math.max(0, i.remainingBalance), 0) * 100) / 100;
   // Only collected cash counts toward allocatable income.
   const totalIncome = Math.round((invoicedIncome - outstanding) * 100) / 100;
-  const operationalExpenses = expenses
-    .filter((e) => e.expenseKind === "OPERATIONAL")
-    .reduce((s, e) => s + e.amount, 0);
-  const growthExpenses = expenses
-    .filter((e) => e.expenseKind === "GROWTH")
-    .reduce((s, e) => s + e.amount, 0);
+  const operationalExpenses =
+    Math.round(
+      expenses.filter((e) => e.expenseKind === "OPERATIONAL").reduce((s, e) => s + e.amount, 0) * 100
+    ) / 100;
+  const growthExpenses =
+    Math.round(
+      expenses.filter((e) => e.expenseKind === "GROWTH").reduce((s, e) => s + e.amount, 0) * 100
+    ) / 100;
+  // Live gross profit for the period (before prior allocations).
   const profit = Math.round((totalIncome - operationalExpenses) * 100) / 100;
 
-  const allocatedOperating = allocations.reduce((s, a) => s + a.operatingAmount, 0);
-  const allocatedSavings = allocations.reduce((s, a) => s + a.savingsAmount, 0);
+  const allocatedOperating =
+    Math.round(allocations.reduce((s, a) => s + a.operatingAmount, 0) * 100) / 100;
+  const allocatedSavings =
+    Math.round(allocations.reduce((s, a) => s + a.savingsAmount, 0) * 100) / 100;
+  // Prefer stored profit; fall back to op+sav for older rows.
+  const alreadyAllocated =
+    Math.round(
+      allocations.reduce((s, a) => s + (a.profit || a.operatingAmount + a.savingsAmount), 0) * 100
+    ) / 100;
+  // Remaining profit that can still be split (live after new cash / expenses / prior allocates).
+  const availableProfit = Math.round(Math.max(0, profit - alreadyAllocated) * 100) / 100;
   const savingsBalance = await getSavingsBalance();
 
   const suggestedOperating =
-    Math.round(((profit * pa.operatingPercent) / 100) * 100) / 100;
+    Math.round(((availableProfit * pa.operatingPercent) / 100) * 100) / 100;
   const suggestedSavings =
-    Math.round(((profit * pa.savingsPercent) / 100) * 100) / 100;
+    Math.round(((availableProfit * pa.savingsPercent) / 100) * 100) / 100;
 
   return {
     period,
@@ -109,6 +121,8 @@ export async function calculateProfitSummary(period: PeriodType) {
     operationalExpenses,
     growthExpenses,
     profit,
+    alreadyAllocated,
+    availableProfit,
     allocatedOperating,
     allocatedSavings,
     savingsBalance,
@@ -142,24 +156,18 @@ export async function allocateProfit(params: {
   }
 
   const summary = await calculateProfitSummary(params.periodType);
-  if (summary.profit <= 0) {
-    throw new Error("No profit available to allocate for this period");
+  if (summary.availableProfit <= 0) {
+    throw new Error(
+      summary.alreadyAllocated > 0
+        ? "No new profit available — current collected profit is already fully allocated"
+        : "No profit available to allocate for this period"
+    );
   }
 
-  const existing = await prisma.profitAllocation.findFirst({
-    where: {
-      periodType: params.periodType,
-      periodStart: summary.periodStart,
-      periodEnd: summary.periodEnd,
-      status: "COMPLETED",
-    },
-  });
-  if (existing && !params.force) {
-    throw new Error("Profit for this period has already been allocated");
-  }
-
+  // Incremental allocate: more than one COMPLETED row per period is OK when new cash arrives.
   const operatingAmount = summary.suggested.operatingAmount;
   const savingsAmount = summary.suggested.savingsAmount;
+  const allocationProfit = summary.availableProfit;
   const allocationNumber = await generateAllocationNumber();
   const currentBalance = await getSavingsBalance();
   const balanceAfter = Math.round((currentBalance + savingsAmount) * 100) / 100;
@@ -173,7 +181,7 @@ export async function allocateProfit(params: {
         periodEnd: summary.periodEnd,
         totalIncome: summary.totalIncome,
         operationalExpenses: summary.operationalExpenses,
-        profit: summary.profit,
+        profit: allocationProfit,
         operatingPercent: pa.operatingPercent,
         savingsPercent: pa.savingsPercent,
         operatingAmount,
@@ -191,7 +199,7 @@ export async function allocateProfit(params: {
         amount: savingsAmount,
         balanceAfter,
         reference: allocationNumber,
-        notes: `${pa.savingsPercent}% of profit → ${pa.savingsBank}`,
+        notes: `${pa.savingsPercent}% of available profit → ${pa.savingsBank}`,
         allocationId: allocation.id,
       },
     });
@@ -203,7 +211,7 @@ export async function allocateProfit(params: {
         periodEnd: summary.periodEnd,
         totalIncome: summary.totalIncome,
         operationalExpenses: summary.operationalExpenses,
-        profit: summary.profit,
+        profit: allocationProfit,
         allocated: true,
         allocationId: allocation.id,
       },
@@ -218,7 +226,7 @@ export async function allocateProfit(params: {
     action: "ALLOCATED",
     entityType: "ProfitAllocation",
     entityId: result.id,
-    details: `${allocationNumber} · Profit Rs. ${summary.profit} → Op ${operatingAmount} / Sav ${savingsAmount}`,
+    details: `${allocationNumber} · Available Rs. ${allocationProfit} → Op ${operatingAmount} / Sav ${savingsAmount}`,
   });
 
   return {

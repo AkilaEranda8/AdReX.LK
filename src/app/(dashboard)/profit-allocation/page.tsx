@@ -46,6 +46,8 @@ interface Summary {
   operationalExpenses: number;
   growthExpenses: number;
   profit: number;
+  alreadyAllocated: number;
+  availableProfit: number;
   allocatedOperating: number;
   allocatedSavings: number;
   savingsBalance: number;
@@ -152,7 +154,7 @@ export default function ProfitAllocationPage() {
   }, [load]);
 
   const handleAllocate = async () => {
-    if (!summary || summary.profit <= 0) {
+    if (!summary || summary.availableProfit <= 0) {
       toast.error("No profit available to allocate");
       return;
     }
@@ -212,7 +214,9 @@ export default function ProfitAllocationPage() {
     { label: "Outstanding (not collected)", value: summary.outstanding, icon: Wallet, color: "text-amber-600", bg: "bg-amber-50" },
     { label: "Collected Income", value: summary.totalIncome, icon: CircleDollarSign, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Operational Expenses", value: summary.operationalExpenses, icon: Wallet, color: "text-orange-600", bg: "bg-orange-50" },
-    { label: "Profit", value: summary.profit, icon: CircleDollarSign, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Gross Profit", value: summary.profit, icon: CircleDollarSign, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Already Allocated", value: summary.alreadyAllocated, icon: Landmark, color: "text-slate-600", bg: "bg-slate-100" },
+    { label: "Available to Allocate", value: summary.availableProfit, icon: ArrowRightLeft, color: "text-indigo-600", bg: "bg-indigo-50" },
     { label: "→ Operating Bank", value: summary.allocatedOperating, icon: Landmark, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "→ Savings Bank", value: summary.allocatedSavings, icon: PiggyBank, color: "text-violet-600", bg: "bg-violet-50" },
     { label: "Savings Balance", value: summary.savingsBalance, icon: PiggyBank, color: summary.lowSavings ? "text-red-600" : "text-teal-600", bg: summary.lowSavings ? "bg-red-50" : "bg-teal-50" },
@@ -231,7 +235,7 @@ export default function ProfitAllocationPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Profit Allocation</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Profit = Collected income (invoiced − outstanding) − Operational expenses. Growth spending comes from company savings only.
+            Live: Collected (invoiced − outstanding) − expenses = profit. Suggested split uses only what is still available after prior allocations.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -253,13 +257,23 @@ export default function ProfitAllocationPage() {
           <Button
             className="gap-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
             onClick={handleAllocate}
-            disabled={allocating || summary.profit <= 0 || !summary.settings.enabled}
+            disabled={allocating || summary.availableProfit <= 0 || !summary.settings.enabled}
           >
             <ArrowRightLeft className="h-4 w-4" />
-            {allocating ? "Allocating..." : "Allocate Profit"}
+            {allocating ? "Allocating..." : "Allocate Available"}
           </Button>
         </div>
       </div>
+
+      {summary.alreadyAllocated > 0 && summary.availableProfit <= 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+          <p>
+            This period&apos;s collected profit ({formatCurrency(summary.profit)}) is already fully allocated
+            ({formatCurrency(summary.alreadyAllocated)}). When more invoices are paid (outstanding drops), available profit will appear here to allocate.
+          </p>
+        </div>
+      )}
 
       {summary.lowSavings && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -297,6 +311,12 @@ export default function ProfitAllocationPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex justify-between">
+              <span className="text-muted-foreground">Available profit</span>
+              <span className="font-semibold text-indigo-600">
+                {formatCurrency(summary.availableProfit)}
+              </span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-muted-foreground">
                 Operating ({summary.suggested.operatingPercent}%) → {summary.settings.operatingBank}
               </span>
@@ -324,10 +344,11 @@ export default function ProfitAllocationPage() {
             <CardTitle className="text-base font-semibold">Flow</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>1. Invoiced income − Outstanding (not collected) = <strong className="text-foreground">Collected income</strong></p>
-            <p>2. Collected income − Operational expenses = <strong className="text-foreground">Profit</strong></p>
-            <p>3. Allocate profit → {summary.settings.operatingPercent}% Operating bank, {summary.settings.savingsPercent}% Savings bank</p>
-            <p>4. Growth expenses (marketing, R&amp;D, expansion) pay from <strong className="text-foreground">Savings only</strong> — they do not reduce profit</p>
+            <p>1. Invoiced − Outstanding = <strong className="text-foreground">Collected income</strong></p>
+            <p>2. Collected − Operational expenses = <strong className="text-foreground">Gross profit</strong></p>
+            <p>3. Gross profit − Already allocated = <strong className="text-foreground">Available</strong> (live)</p>
+            <p>4. Allocate available → {summary.settings.operatingPercent}% Operating, {summary.settings.savingsPercent}% Savings</p>
+            <p>5. Growth expenses pay from <strong className="text-foreground">Savings only</strong></p>
           </CardContent>
         </Card>
       </div>
