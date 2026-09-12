@@ -23,6 +23,7 @@
 # misc local
 /.npm-cache
 /.tmp
+/backups
 install.log
 prisma/dev.db
 prisma/dev.db-journal

@@ -4,28 +4,38 @@ import { getSessionFromRequest } from "@/lib/auth";
 
 const publicPaths = ["/login", "/forgot-password", "/reset-password"];
 
+function isIpHost(host: string) {
+  const hostname = host.split(":")[0];
+  return (
+    hostname === "localhost" ||
+    /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname)
+  );
+}
+
 function appOrigin(request: NextRequest) {
   const host =
     request.headers.get("x-forwarded-host") ||
     request.headers.get("host") ||
     request.nextUrl.host;
 
-  if (process.env.NODE_ENV === "production") {
-    return `https://${host}`;
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (isIpHost(host) || process.env.NODE_ENV !== "production") {
+    const proto = forwardedProto || request.nextUrl.protocol.replace(":", "") || "http";
+    return `${proto}://${host}`;
   }
 
-  const proto = request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "");
-  return `${proto}://${host}`;
+  return `https://${host}`;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const host = request.headers.get("host") || request.nextUrl.host;
   if (
     process.env.NODE_ENV === "production" &&
-    request.headers.get("x-forwarded-proto") === "http"
+    request.headers.get("x-forwarded-proto") === "http" &&
+    !isIpHost(host)
   ) {
-    const host = request.headers.get("host") || request.nextUrl.host;
     return NextResponse.redirect(
       `https://${host}${pathname}${request.nextUrl.search}`,
       301
