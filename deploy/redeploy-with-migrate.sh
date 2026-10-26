@@ -16,5 +16,5 @@ docker run --rm \
 
 docker compose -f docker-compose.standalone.yml restart invoice-app
 sleep 4
-curl -sI https://admin.adrexlk.com/login | head -5
+curl -sI https://adrexlk.hexalyte.com/login | head -5
 echo DEPLOY_OK

@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Switch production domain to admin.adrexlk.com (SSL + env + rebuild).
-DOMAIN="admin.adrexlk.com"
+# Switch production domain to adrexlk.hexalyte.com (SSL + env + rebuild).
+DOMAIN="adrexlk.hexalyte.com"
 APP_DIR="/root/adrex-invoice"
 EMAIL="admin@adrexlk.com"
 
@@ -62,7 +62,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/invoice.hexalyte.com/privkey.pem;
 
     location / {
-        return 301 https://admin.adrexlk.com$request_uri;
+        return 301 https://adrexlk.hexalyte.com$request_uri;
     }
 }
 OLDSSL

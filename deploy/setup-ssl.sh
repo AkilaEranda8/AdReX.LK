@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-DOMAIN="admin.adrexlk.com"
+DOMAIN="adrexlk.hexalyte.com"
 APP_DIR="/root/adrex-invoice"
 EMAIL="admin@adrexlk.com"
 
